@@ -33,6 +33,11 @@
     </div>
 
     <div class="card">
+      <h3 class="section-title">打卡日历</h3>
+      <CalendarHeatmap :checkins="checkinStore.checkins" />
+    </div>
+
+    <div class="card">
       <div class="chart-header">
         <h3 class="section-title" style="margin-bottom: 0;">数据统计</h3>
         <el-radio-group v-model="statsType" size="small">
@@ -90,6 +95,7 @@ import VChart from 'vue-echarts'
 import { ElMessage } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
 import { sportTypes } from '@/utils/common'
+import CalendarHeatmap from '@/components/CalendarHeatmap.vue'
 
 use([
   CanvasRenderer,

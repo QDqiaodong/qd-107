@@ -37,73 +37,77 @@ export const saveUserInfo = (info) => {
 
 const getMockCheckins = () => {
   const now = new Date()
-  return [
-    {
-      id: 1,
-      type: 'running',
-      typeName: '跑步',
-      duration: 45,
-      amount: 5.2,
-      amountUnit: '公里',
-      status: 'good',
-      statusText: '状态良好',
-      note: '今天跑步感觉不错，配速稳定',
-      images: [],
-      createTime: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString()
-    },
-    {
-      id: 2,
-      type: 'cycling',
-      typeName: '骑行',
-      duration: 60,
-      amount: 15,
-      amountUnit: '公里',
-      status: 'normal',
-      statusText: '一般',
-      note: '风有点大',
-      images: [],
-      createTime: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString()
-    },
-    {
-      id: 3,
-      type: 'gym',
-      typeName: '健身',
-      duration: 90,
-      amount: 12,
-      amountUnit: '组',
-      status: 'good',
-      statusText: '状态良好',
-      note: '力量训练，胸部和三头肌',
-      images: [],
-      createTime: new Date(now.getTime() - 1000 * 60 * 60 * 48).toISOString()
-    },
-    {
-      id: 4,
-      type: 'yoga',
-      typeName: '瑜伽',
-      duration: 60,
-      amount: 1,
-      amountUnit: '次',
-      status: 'excellent',
-      statusText: '非常好',
-      note: '身心放松',
-      images: [],
-      createTime: new Date(now.getTime() - 1000 * 60 * 60 * 72).toISOString()
-    },
-    {
-      id: 5,
-      type: 'swimming',
-      typeName: '游泳',
-      duration: 40,
-      amount: 1000,
-      amountUnit: '米',
-      status: 'good',
-      statusText: '状态良好',
-      note: '自由泳1000米',
-      images: [],
-      createTime: new Date(now.getTime() - 1000 * 60 * 60 * 96).toISOString()
-    }
+  const types = [
+    { type: 'running', typeName: '跑步', unit: '公里', amountRange: [3, 10], durationRange: [30, 90] },
+    { type: 'cycling', typeName: '骑行', unit: '公里', amountRange: [10, 30], durationRange: [45, 120] },
+    { type: 'swimming', typeName: '游泳', unit: '米', amountRange: [500, 2000], durationRange: [30, 90] },
+    { type: 'yoga', typeName: '瑜伽', unit: '次', amountRange: [1, 2], durationRange: [30, 90] },
+    { type: 'gym', typeName: '健身', unit: '组', amountRange: [8, 20], durationRange: [45, 120] }
   ]
+  const statuses = [
+    { value: 'excellent', text: '非常好' },
+    { value: 'good', text: '状态良好' },
+    { value: 'normal', text: '一般' },
+    { value: 'tired', text: '比较累' }
+  ]
+  const notes = [
+    '今天状态不错，继续加油！',
+    '配速稳定，感觉很好',
+    '力量训练，感觉肌肉在增长',
+    '身心放松，非常舒服',
+    '风有点大，有点累',
+    '突破了个人记录！',
+    '热身充分，状态在线',
+    '',
+    '',
+    ''
+  ]
+  
+  const checkins = []
+  let id = 1
+  
+  for (let dayOffset = 0; dayOffset < 60; dayOffset++) {
+    const hasCheckin = Math.random() > 0.25
+    if (!hasCheckin) continue
+    
+    const numCheckins = Math.random() > 0.7 ? 2 : 1
+    
+    for (let i = 0; i < numCheckins; i++) {
+      const typeInfo = types[Math.floor(Math.random() * types.length)]
+      const statusInfo = statuses[Math.floor(Math.random() * statuses.length)]
+      const duration = Math.floor(
+        typeInfo.durationRange[0] + 
+        Math.random() * (typeInfo.durationRange[1] - typeInfo.durationRange[0])
+      )
+      const amount = +(
+        typeInfo.amountRange[0] + 
+        Math.random() * (typeInfo.amountRange[1] - typeInfo.amountRange[0])
+      ).toFixed(1)
+      
+      const hour = 6 + Math.floor(Math.random() * 14)
+      const minute = Math.floor(Math.random() * 60)
+      
+      const date = new Date(now)
+      date.setDate(date.getDate() - dayOffset)
+      date.setHours(hour, minute, 0, 0)
+      
+      checkins.push({
+        id: id++,
+        type: typeInfo.type,
+        typeName: typeInfo.typeName,
+        duration: duration,
+        amount: amount,
+        amountUnit: typeInfo.unit,
+        status: statusInfo.value,
+        statusText: statusInfo.text,
+        note: notes[Math.floor(Math.random() * notes.length)],
+        images: [],
+        createTime: date.toISOString()
+      })
+    }
+  }
+  
+  return checkins.sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
 }
 
 const getMockPlans = () => {
