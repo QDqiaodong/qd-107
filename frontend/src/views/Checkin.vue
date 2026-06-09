@@ -61,6 +61,19 @@
                 :rows="3"
                 placeholder="记录一下这次运动的感受..."
               />
+              <div v-if="commonPhrases.length > 0" class="phrase-tags">
+                <span class="phrase-tags-label">常用短语：</span>
+                <el-tag
+                  v-for="(phrase, index) in commonPhrases"
+                  :key="index"
+                  size="small"
+                  effect="plain"
+                  class="phrase-tag"
+                  @click="insertPhrase(phrase)"
+                >
+                  {{ phrase }}
+                </el-tag>
+              </div>
             </el-form-item>
           </el-form>
         </div>
@@ -121,7 +134,7 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
-import { sportTypes, bodyStatus } from '@/utils/common'
+import { sportTypes, bodyStatus, extractCommonPhrases } from '@/utils/common'
 
 const router = useRouter()
 const checkinStore = useCheckinStore()
@@ -164,6 +177,18 @@ const canNext = computed(() => {
       return true
   }
 })
+
+const commonPhrases = computed(() => {
+  return extractCommonPhrases(checkinStore.checkins, formData.type, 6)
+})
+
+const insertPhrase = (phrase) => {
+  if (formData.note) {
+    formData.note += '，' + phrase
+  } else {
+    formData.note = phrase
+  }
+}
 
 const getTypeIcon = (type) => {
   const iconMap = {
@@ -335,6 +360,30 @@ const submitCheckin = () => {
 .unit {
   margin-left: 12px;
   color: #909399;
+}
+
+.phrase-tags {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.phrase-tags-label {
+  font-size: 13px;
+  color: #909399;
+  margin-right: 4px;
+}
+
+.phrase-tag {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.phrase-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
 }
 
 .status-grid {

@@ -50,3 +50,37 @@ export const timeAgo = (dateStr) => {
   
   return formatDate(dateStr, 'YYYY-MM-DD')
 }
+
+export const extractCommonPhrases = (checkins, sportType = '', limit = 8) => {
+  const phraseCount = {}
+  const punctuationRegex = /[，。！？、；：""''（）\[\]【】\n\r,.!?;:'"()\[\]]/g
+
+  const filteredCheckins = sportType
+    ? checkins.filter(c => c.type === sportType && c.note && c.note.trim())
+    : checkins.filter(c => c.note && c.note.trim())
+
+  filteredCheckins.forEach(checkin => {
+    const note = checkin.note.trim()
+    if (!note) return
+
+    const phrases = note.split(punctuationRegex).filter(p => p.trim().length >= 2)
+
+    phrases.forEach(phrase => {
+      const trimmed = phrase.trim()
+      if (trimmed.length >= 2 && trimmed.length <= 20) {
+        phraseCount[trimmed] = (phraseCount[trimmed] || 0) + 1
+      }
+    })
+
+    if (note.length >= 2 && note.length <= 20) {
+      phraseCount[note] = (phraseCount[note] || 0) + 2
+    }
+  })
+
+  const sortedPhrases = Object.entries(phraseCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([phrase]) => phrase)
+
+  return sortedPhrases
+}
