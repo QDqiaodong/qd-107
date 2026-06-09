@@ -59,69 +59,82 @@
       </div>
     </div>
 
-    <div class="checkin-list">
-      <div v-if="filteredCheckins.length === 0" class="card empty-state">
-        <el-icon><Document /></el-icon>
-        <p>暂无运动记录</p>
-        <el-button type="primary" @click="$router.push('/checkin')">
-          立即打卡
-        </el-button>
-      </div>
-      
-      <div v-for="item in filteredCheckins" :key="item.id" class="card checkin-card">
-        <div class="checkin-header">
-          <div class="checkin-type">
-            <div class="type-icon" :style="{ background: getSportTypeInfo(item.type).color + '20' }">
-              <el-icon :size="24" :color="getSportTypeInfo(item.type).color">
-                <component :is="getSportTypeIcon(item.type)" />
-              </el-icon>
+    <InfiniteScrollList
+      :list="list"
+      :loading="loading"
+      :error="error"
+      :finished="finished"
+      class="checkin-scroll"
+      @load="loadMore"
+    >
+      <template #default="{ list }">
+        <div v-for="item in list" :key="item.id" class="card checkin-card">
+          <div class="checkin-header">
+            <div class="checkin-type">
+              <div class="type-icon" :style="{ background: getSportTypeInfo(item.type).color + '20' }">
+                <el-icon :size="24" :color="getSportTypeInfo(item.type).color">
+                  <component :is="getSportTypeIcon(item.type)" />
+                </el-icon>
+              </div>
+              <div>
+                <div class="type-name">{{ item.typeName }}</div>
+                <div class="checkin-time">{{ timeAgo(item.createTime) }}</div>
+              </div>
             </div>
-            <div>
-              <div class="type-name">{{ item.typeName }}</div>
-              <div class="checkin-time">{{ timeAgo(item.createTime) }}</div>
+            <el-button type="danger" text @click="handleDelete(item.id)">
+              <el-icon><Delete /></el-icon>
+            </el-button>
+          </div>
+          
+          <div class="checkin-stats">
+            <div class="stat-item">
+              <div class="stat-num">{{ item.duration }}</div>
+              <div class="stat-text">分钟</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <div class="stat-num">{{ item.amount }}</div>
+              <div class="stat-text">{{ item.amountUnit }}</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <el-tag :type="getStatusType(item.status)" size="small">
+                {{ item.statusText }}
+              </el-tag>
             </div>
           </div>
-          <el-button type="danger" text @click="handleDelete(item.id)">
-            <el-icon><Delete /></el-icon>
+          
+          <div v-if="item.note" class="checkin-note">
+            <span class="note-label">备注：</span>{{ item.note }}
+          </div>
+          
+          <div v-if="item.images && item.images.length > 0" class="checkin-images">
+            <img v-for="(img, idx) in item.images" :key="idx" :src="img" class="checkin-img" />
+          </div>
+        </div>
+      </template>
+
+      <template #empty>
+        <div class="card empty-state">
+          <el-icon><Document /></el-icon>
+          <p>暂无运动记录</p>
+          <el-button type="primary" @click="$router.push('/checkin')">
+            立即打卡
           </el-button>
         </div>
-        
-        <div class="checkin-stats">
-          <div class="stat-item">
-            <div class="stat-num">{{ item.duration }}</div>
-            <div class="stat-text">分钟</div>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <div class="stat-num">{{ item.amount }}</div>
-            <div class="stat-text">{{ item.amountUnit }}</div>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <el-tag :type="getStatusType(item.status)" size="small">
-              {{ item.statusText }}
-            </el-tag>
-          </div>
-        </div>
-        
-        <div v-if="item.note" class="checkin-note">
-          <span class="note-label">备注：</span>{{ item.note }}
-        </div>
-        
-        <div v-if="item.images && item.images.length > 0" class="checkin-images">
-          <img v-for="(img, idx) in item.images" :key="idx" :src="img" class="checkin-img" />
-        </div>
-      </div>
-    </div>
+      </template>
+    </InfiniteScrollList>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
 import { sportTypes, getSportTypeInfo, timeAgo } from '@/utils/common'
+import { useInfiniteScroll } from '@/composables/useInfiniteScroll'
+import InfiniteScrollList from '@/components/InfiniteScrollList.vue'
 
 const router = useRouter()
 const checkinStore = useCheckinStore()
@@ -129,12 +142,26 @@ const checkinStore = useCheckinStore()
 const filterTypes = [{ value: 'all', label: '全部' }, ...sportTypes]
 const activeFilter = ref('all')
 
-const filteredCheckins = computed(() => {
-  if (activeFilter.value === 'all') {
-    return checkinStore.checkins
-  }
-  return checkinStore.checkins.filter(item => item.type === activeFilter.value)
+const fetchCheckins = (page, pageSize) => {
+  return checkinStore.getCheckinsByPage(page, pageSize, activeFilter.value)
+}
+
+const {
+  list,
+  loading,
+  error,
+  finished,
+  total,
+  loadMore,
+  refresh
+} = useInfiniteScroll(fetchCheckins, {
+  pageSize: 10,
+  immediate: false
 })
+
+watch(activeFilter, () => {
+  refresh()
+}, { immediate: true })
 
 const getSportTypeIcon = (type) => {
   const iconMap = {
@@ -165,6 +192,7 @@ const handleDelete = (id) => {
     type: 'warning'
   }).then(() => {
     checkinStore.deleteCheckin(id)
+    refresh()
     ElMessage.success('删除成功')
   }).catch(() => {})
 }
@@ -222,6 +250,12 @@ const handleDelete = (id) => {
 .filter-tags {
   display: flex;
   flex-wrap: wrap;
+}
+
+.checkin-scroll {
+  height: calc(100vh - 380px);
+  min-height: 400px;
+  margin-top: 16px;
 }
 
 .checkin-card {

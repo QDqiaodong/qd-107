@@ -26,6 +26,23 @@ export const useCheckinStore = defineStore('checkin', {
     }
   },
   actions: {
+    getCheckinsByPage(page, pageSize, type = 'all') {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          let filtered = this.checkins
+          if (type !== 'all') {
+            filtered = this.checkins.filter(item => item.type === type)
+          }
+          const start = (page - 1) * pageSize
+          const end = start + pageSize
+          const list = filtered.slice(start, end)
+          resolve({
+            list,
+            total: filtered.length
+          })
+        }, 300)
+      })
+    },
     addCheckin(checkin) {
       const newCheckin = {
         ...checkin,
