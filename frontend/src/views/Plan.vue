@@ -50,6 +50,22 @@
                 </el-button>
               </div>
             </div>
+            <div class="remaining-capsules">
+              <span
+                class="capsule capsule-count"
+                :class="{ 'capsule-done': getWeeklyRemaining(plan).remainingCount === 0, 'capsule-urgent': getWeeklyRemaining(plan).remainingCount > 0 && getWeeklyRemaining(plan).remainingCount <= 1 }"
+              >
+                <el-icon v-if="getWeeklyRemaining(plan).remainingCount === 0"><CircleCheck /></el-icon>
+                {{ getWeeklyRemaining(plan).remainingCount === 0 ? '本周已完成' : '本周还差 ' + getWeeklyRemaining(plan).remainingCount + ' 练' }}
+              </span>
+              <span
+                class="capsule capsule-duration"
+                :class="{ 'capsule-done': getWeeklyRemaining(plan).remainingMinutes === 0, 'capsule-urgent': getWeeklyRemaining(plan).remainingMinutes > 0 && getWeeklyRemaining(plan).remainingMinutes <= 30 }"
+              >
+                <el-icon v-if="getWeeklyRemaining(plan).remainingMinutes === 0"><CircleCheck /></el-icon>
+                {{ getWeeklyRemaining(plan).remainingMinutes === 0 ? '时长已达标' : '还差 ' + getWeeklyRemaining(plan).remainingMinutes + ' 分钟' }}
+              </span>
+            </div>
             <div class="plan-target">
               <span class="target-label">目标：</span>{{ plan.target }}
             </div>
@@ -174,6 +190,10 @@ const planForm = ref({
 
 const activePlans = computed(() => checkinStore.plans.filter(p => !p.completed))
 const completedPlans = computed(() => checkinStore.plans.filter(p => p.completed))
+
+const getWeeklyRemaining = (plan) => {
+  return checkinStore.getWeeklyRemaining(plan)
+}
 
 const getSportTypeIcon = (type) => {
   const iconMap = {
@@ -346,6 +366,64 @@ const handleDelete = (id) => {
   line-height: 1.6;
   padding-top: 12px;
   border-top: 1px solid #f0f0f0;
+}
+
+.remaining-capsules {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  background: #f0f9eb;
+  color: #67c23a;
+  border: 1px solid #e1f3d8;
+}
+
+.capsule-duration {
+  background: #ecf5ff;
+  color: #409eff;
+  border-color: #d9ecff;
+}
+
+.capsule-done.capsule-count {
+  background: #f0f9eb;
+  color: #67c23a;
+  border-color: #e1f3d8;
+}
+
+.capsule-done.capsule-duration {
+  background: #f0f9eb;
+  color: #67c23a;
+  border-color: #e1f3d8;
+}
+
+.capsule-urgent.capsule-count {
+  background: #fef0f0;
+  color: #f56c6c;
+  border-color: #fde2e2;
+  animation: pulse-urgent 2s ease-in-out infinite;
+}
+
+.capsule-urgent.capsule-duration {
+  background: #fdf6ec;
+  color: #e6a23c;
+  border-color: #faecd8;
+  animation: pulse-urgent 2s ease-in-out infinite;
+}
+
+@keyframes pulse-urgent {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .target-label {

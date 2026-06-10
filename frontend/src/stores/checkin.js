@@ -39,6 +39,28 @@ export const useCheckinStore = defineStore('checkin', {
         }
       })
     },
+    getWeeklyRemaining: (state) => (plan) => {
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const weekStart = new Date(now)
+      weekStart.setDate(now.getDate() - dayOfWeek)
+      weekStart.setHours(0, 0, 0, 0)
+
+      const weekCheckins = state.checkins.filter(item =>
+        new Date(item.createTime) >= weekStart && item.type === plan.type
+      )
+
+      const completedCount = weekCheckins.length
+      const completedDuration = weekCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
+
+      const targetCount = plan.weekdays ? plan.weekdays.length : 0
+      const targetDuration = targetCount * (plan.duration || 0)
+
+      return {
+        remainingCount: Math.max(0, targetCount - completedCount),
+        remainingMinutes: Math.max(0, targetDuration - completedDuration)
+      }
+    },
     weeklyTotalDuration: (state) => {
       const days = [0, 1, 2, 3, 4, 5, 6]
       return days.reduce((total, day) => {
