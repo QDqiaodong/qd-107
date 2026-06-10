@@ -1,6 +1,7 @@
 package com.sport.checkin.controller;
 
 import com.sport.checkin.common.Result;
+import com.sport.checkin.dto.CheckinResultDTO;
 import com.sport.checkin.entity.CheckinRecord;
 import com.sport.checkin.service.CheckinRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,10 +40,10 @@ public class CheckinController {
     }
 
     @PostMapping
-    public Result<CheckinRecord> addCheckin(@RequestBody CheckinRecord record) {
+    public Result<CheckinResultDTO> addCheckin(@RequestBody CheckinRecord record) {
         try {
-            checkinRecordService.addCheckin(record);
-            return Result.success("打卡成功", record);
+            CheckinResultDTO result = checkinRecordService.addCheckin(record);
+            return Result.success(result.getMergeTip(), result);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

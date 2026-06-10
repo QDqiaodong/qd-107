@@ -3,6 +3,7 @@ package com.sport.checkin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sport.checkin.dto.CheckinResultDTO;
 import com.sport.checkin.entity.CheckinRecord;
 import com.sport.checkin.entity.SportType;
 import com.sport.checkin.mapper.CheckinRecordMapper;
@@ -10,13 +11,29 @@ import com.sport.checkin.service.CheckinRecordService;
 import com.sport.checkin.service.SportTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, CheckinRecord> implements CheckinRecordService {
+
+    private static final int MERGE_TIME_WINDOW_MINUTES = 5;
+
+    private static final double DURATION_SIMILARITY_RATIO = 0.1;
+
+    private static final int DURATION_SIMILARITY_MINUTES = 5;
+
+    private static final double DISTANCE_SIMILARITY_RATIO = 0.1;
 
     @Autowired
     private SportTypeService sportTypeService;
@@ -39,16 +56,155 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
     }
 
     @Override
-    public boolean addCheckin(CheckinRecord record) {
+    public CheckinResultDTO addCheckin(CheckinRecord record) {
         record.setCheckinDate(LocalDate.now());
         record.setCheckinTime(LocalDateTime.now());
         if (record.getCalorie() == null && record.getSportTypeId() != null) {
             SportType sportType = sportTypeService.getById(record.getSportTypeId());
             if (sportType != null && sportType.getCaloriePerMinute() != null) {
-                record.setCalorie(sportType.getCaloriePerMinute().multiply(new java.math.BigDecimal(record.getDuration())));
+                record.setCalorie(sportType.getCaloriePerMinute().multiply(new BigDecimal(record.getDuration())));
             }
         }
-        return save(record);
+
+        CheckinRecord similarRecord = findSimilarRecord(record);
+        if (similarRecord != null) {
+            CheckinRecord mergedRecord = mergeRecords(similarRecord, record);
+            updateById(mergedRecord);
+            return CheckinResultDTO.of(mergedRecord, true, "检测到短时间内存在相似打卡，已自动合并");
+        }
+
+        save(record);
+        return CheckinResultDTO.of(record, false, "打卡成功");
+    }
+
+    private CheckinRecord findSimilarRecord(CheckinRecord newRecord) {
+        LocalDateTime timeWindowStart = newRecord.getCheckinTime().minusMinutes(MERGE_TIME_WINDOW_MINUTES);
+
+        LambdaQueryWrapper<CheckinRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CheckinRecord::getUserId, newRecord.getUserId())
+                .eq(CheckinRecord::getSportTypeId, newRecord.getSportTypeId())
+                .ge(CheckinRecord::getCheckinTime, timeWindowStart)
+                .lt(CheckinRecord::getCheckinTime, newRecord.getCheckinTime())
+                .orderByAsc(CheckinRecord::getCheckinTime);
+
+        List<CheckinRecord> recentRecords = list(wrapper);
+
+        for (CheckinRecord existing : recentRecords) {
+            if (isSimilar(existing, newRecord)) {
+                return existing;
+            }
+        }
+        return null;
+    }
+
+    private boolean isSimilar(CheckinRecord existing, CheckinRecord newRecord) {
+        boolean durationSimilar = isDurationSimilar(existing.getDuration(), newRecord.getDuration());
+        boolean distanceSimilar = isDistanceSimilar(existing.getDistance(), newRecord.getDistance());
+        boolean remarkSimilar = isRemarkSimilar(existing.getRemark(), newRecord.getRemark());
+
+        return durationSimilar && distanceSimilar && remarkSimilar;
+    }
+
+    private boolean isDurationSimilar(Integer d1, Integer d2) {
+        if (d1 == null || d2 == null) {
+            return true;
+        }
+        int diff = Math.abs(d1 - d2);
+        if (diff <= DURATION_SIMILARITY_MINUTES) {
+            return true;
+        }
+        int max = Math.max(d1, d2);
+        return (double) diff / max <= DURATION_SIMILARITY_RATIO;
+    }
+
+    private boolean isDistanceSimilar(BigDecimal dist1, BigDecimal dist2) {
+        if (dist1 == null || dist2 == null) {
+            return true;
+        }
+        if (dist1.compareTo(BigDecimal.ZERO) == 0 && dist2.compareTo(BigDecimal.ZERO) == 0) {
+            return true;
+        }
+        BigDecimal diff = dist1.subtract(dist2).abs();
+        BigDecimal max = dist1.max(dist2);
+        if (max.compareTo(BigDecimal.ZERO) == 0) {
+            return true;
+        }
+        return diff.divide(max, 4, RoundingMode.HALF_UP).doubleValue() <= DISTANCE_SIMILARITY_RATIO;
+    }
+
+    private boolean isRemarkSimilar(String r1, String r2) {
+        if (!StringUtils.hasText(r1) && !StringUtils.hasText(r2)) {
+            return true;
+        }
+        if (!StringUtils.hasText(r1) || !StringUtils.hasText(r2)) {
+            return false;
+        }
+        return r1.equals(r2);
+    }
+
+    private CheckinRecord mergeRecords(CheckinRecord existing, CheckinRecord newRecord) {
+        if (newRecord.getDuration() != null) {
+            Integer existingDuration = Objects.requireNonNullElse(existing.getDuration(), 0);
+            existing.setDuration(Math.max(existingDuration, newRecord.getDuration()));
+        }
+
+        if (newRecord.getCalorie() != null) {
+            if (existing.getCalorie() == null || newRecord.getCalorie().compareTo(existing.getCalorie()) > 0) {
+                existing.setCalorie(newRecord.getCalorie());
+            }
+        }
+
+        if (newRecord.getDistance() != null) {
+            if (existing.getDistance() == null || newRecord.getDistance().compareTo(existing.getDistance()) > 0) {
+                existing.setDistance(newRecord.getDistance());
+            }
+        }
+
+        if (newRecord.getPlanId() != null && existing.getPlanId() == null) {
+            existing.setPlanId(newRecord.getPlanId());
+        }
+
+        String mergedRemark = mergeRemark(existing.getRemark(), newRecord.getRemark());
+        existing.setRemark(mergedRemark);
+
+        String mergedImages = mergeImages(existing.getImages(), newRecord.getImages());
+        existing.setImages(mergedImages);
+
+        existing.setUpdateTime(LocalDateTime.now());
+
+        return existing;
+    }
+
+    private String mergeRemark(String r1, String r2) {
+        if (!StringUtils.hasText(r1) && !StringUtils.hasText(r2)) {
+            return null;
+        }
+        if (!StringUtils.hasText(r1)) {
+            return r2;
+        }
+        if (!StringUtils.hasText(r2)) {
+            return r1;
+        }
+        if (r1.equals(r2)) {
+            return r1;
+        }
+        return r1 + "；" + r2;
+    }
+
+    private String mergeImages(String img1, String img2) {
+        if (!StringUtils.hasText(img1) && !StringUtils.hasText(img2)) {
+            return null;
+        }
+        if (!StringUtils.hasText(img1)) {
+            return img2;
+        }
+        if (!StringUtils.hasText(img2)) {
+            return img1;
+        }
+        Set<String> imageSet = new HashSet<>();
+        imageSet.addAll(Arrays.asList(img1.split(",")));
+        imageSet.addAll(Arrays.asList(img2.split(",")));
+        return imageSet.stream().filter(StringUtils::hasText).collect(Collectors.joining(","));
     }
 
 }

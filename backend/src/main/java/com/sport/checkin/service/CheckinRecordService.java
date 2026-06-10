@@ -1,6 +1,7 @@
 package com.sport.checkin.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.sport.checkin.dto.CheckinResultDTO;
 import com.sport.checkin.entity.CheckinRecord;
 
 import java.util.List;
@@ -11,6 +12,6 @@ public interface CheckinRecordService extends IService<CheckinRecord> {
 
     CheckinRecord getCheckinDetail(Long id);
 
-    boolean addCheckin(CheckinRecord record);
+    CheckinResultDTO addCheckin(CheckinRecord record);
 
 }
