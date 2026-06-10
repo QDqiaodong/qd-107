@@ -203,15 +203,26 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound } from '@element-plus/icons-vue'
 import { useCheckinStore } from '@/stores/checkin'
 import { sportTypes, bodyStatus, muscleTags, extractCommonPhrases } from '@/utils/common'
 
 const router = useRouter()
+const route = useRoute()
 const checkinStore = useCheckinStore()
+
+onMounted(() => {
+  const typeFromQuery = route.query.type
+  if (typeFromQuery) {
+    const typeInfo = sportTypes.find(t => t.value === typeFromQuery)
+    if (typeInfo) {
+      selectType(typeInfo)
+    }
+  }
+})
 
 const activeStep = ref(0)
 const fileList = ref([])

@@ -29,6 +29,7 @@ CREATE TABLE sport_type (
     calorie_per_minute DECIMAL(10,2) COMMENT '每分钟消耗卡路里',
     sort INT DEFAULT 0 COMMENT '排序',
     hot_count INT DEFAULT 0 COMMENT '热度计数',
+    last_hot_update_time DATETIME COMMENT '最后热度更新时间',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted TINYINT DEFAULT 0 COMMENT '删除标记：0未删除 1已删除'

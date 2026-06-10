@@ -41,6 +41,38 @@
       </div>
     </div>
 
+    <div class="card hot-types-card">
+      <div class="hot-types-header">
+        <el-icon :size="20" color="#f56c6c"><HotWater /></el-icon>
+        <span class="section-title" style="margin-bottom: 0;">热门运动</span>
+        <span class="hot-tip">实时热度 · 智能排序</span>
+      </div>
+      <div v-if="hotTypes.length > 0" class="hot-types-grid">
+        <div
+          v-for="(type, index) in hotTypes"
+          :key="type.id"
+          class="hot-type-item"
+          @click="goCheckin(type)"
+        >
+          <div class="hot-rank" :class="{ 'top3': index < 3 }">{{ index + 1 }}</div>
+          <div class="type-icon" :style="{ background: getSportTypeInfo(type.icon).color + '20' }">
+            <el-icon :size="24" :color="getSportTypeInfo(type.icon).color">
+              <component :is="getSportTypeIcon(type.icon)" />
+            </el-icon>
+          </div>
+          <div class="type-info">
+            <div class="type-name">{{ type.name }}</div>
+            <div class="type-hot">热度 {{ formatHotCount(type.hotCount) }}</div>
+          </div>
+          <el-icon class="go-icon" :size="16" color="#909399"><ArrowRight /></el-icon>
+        </div>
+      </div>
+      <div v-else class="hot-types-empty">
+        <el-icon :size="32" color="#c0c4cc"><TrendCharts /></el-icon>
+        <p>暂无热门运动数据</p>
+      </div>
+    </div>
+
     <div class="card">
       <div class="filter-bar">
         <span class="section-title" style="margin-bottom: 0;">运动类型筛选</span>
@@ -142,12 +174,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
 import { sportTypes, getSportTypeInfo, muscleTags, timeAgo } from '@/utils/common'
 import { useInfiniteScroll } from '@/composables/useInfiniteScroll'
+import { sportTypeApi } from '@/api'
 import InfiniteScrollList from '@/components/InfiniteScrollList.vue'
 
 const router = useRouter()
@@ -155,6 +188,36 @@ const checkinStore = useCheckinStore()
 
 const filterTypes = [{ value: 'all', label: '全部' }, ...sportTypes]
 const activeFilter = ref('all')
+const hotTypes = ref([])
+
+const loadHotTypes = async () => {
+  try {
+    const res = await sportTypeApi.getHotTypes()
+    if (res.code === 200) {
+      hotTypes.value = res.data || []
+    }
+  } catch (e) {
+    console.error('加载热门运动类型失败', e)
+  }
+}
+
+const formatHotCount = (count) => {
+  if (!count) return 0
+  if (count >= 10000) return (count / 10000).toFixed(1) + 'w'
+  if (count >= 1000) return (count / 1000).toFixed(1) + 'k'
+  return count
+}
+
+const goCheckin = (type) => {
+  router.push({
+    path: '/checkin',
+    query: { type: type.icon }
+  })
+}
+
+onMounted(() => {
+  loadHotTypes()
+})
 
 const fetchCheckins = (page, pageSize) => {
   return checkinStore.getCheckinsByPage(page, pageSize, activeFilter.value)
@@ -223,6 +286,123 @@ const handleDelete = (id) => {
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 20px;
+}
+
+.hot-types-card {
+  margin-bottom: 16px;
+}
+
+.hot-types-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.hot-types-header .section-title {
+  margin: 0;
+}
+
+.hot-tip {
+  margin-left: auto;
+  font-size: 12px;
+  color: #909399;
+  background: #f5f7fa;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.hot-types-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.hot-type-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.hot-type-item:hover {
+  background: #fff;
+  border-color: #409eff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+}
+
+.hot-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #e4e7ed;
+  color: #909399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.hot-rank.top3 {
+  background: linear-gradient(135deg, #ff6b6b, #feca57);
+  color: #fff;
+}
+
+.hot-type-item .type-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hot-type-item .type-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hot-type-item .type-info .type-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 2px;
+}
+
+.hot-type-item .type-info .type-hot {
+  font-size: 12px;
+  color: #909399;
+}
+
+.hot-type-item .go-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.hot-type-item:hover .go-icon {
+  transform: translateX(4px);
+  color: #409eff;
+}
+
+.hot-types-empty {
+  text-align: center;
+  padding: 32px 0;
+  color: #909399;
+}
+
+.hot-types-empty p {
+  margin-top: 8px;
+  font-size: 14px;
 }
 
 .stat-card {
@@ -407,6 +587,21 @@ const handleDelete = (id) => {
   
   .stat-value {
     font-size: 22px;
+  }
+  
+  .hot-types-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .hot-type-item {
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .hot-type-item .type-icon {
+    width: 40px;
+    height: 40px;
   }
   
   .filter-bar {

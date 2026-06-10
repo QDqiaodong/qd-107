@@ -102,11 +102,13 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
             if (similarRecord != null) {
                 CheckinRecord mergedRecord = mergeRecords(similarRecord, record);
                 updateById(mergedRecord);
+                sportTypeService.incrementHotCount(record.getSportTypeId());
                 log.info("打卡合并成功，userId:{}, sportTypeId:{}, 原记录id:{}", record.getUserId(), record.getSportTypeId(), similarRecord.getId());
                 return CheckinResultDTO.of(mergedRecord, true, "检测到短时间内存在相似打卡，已自动合并");
             }
 
             save(record);
+            sportTypeService.incrementHotCount(record.getSportTypeId());
             log.info("打卡成功，userId:{}, sportTypeId:{}, 记录id:{}", record.getUserId(), record.getSportTypeId(), record.getId());
             return CheckinResultDTO.of(record, false, "打卡成功");
         } finally {

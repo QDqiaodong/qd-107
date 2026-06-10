@@ -23,6 +23,8 @@ public class SportType {
 
     private Integer hotCount;
 
+    private LocalDateTime lastHotUpdateTime;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

@@ -11,4 +11,6 @@ public interface SportTypeService extends IService<SportType> {
 
     List<SportType> getAllTypes();
 
+    void incrementHotCount(Long sportTypeId);
+
 }
