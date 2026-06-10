@@ -103,6 +103,20 @@
               </el-tag>
             </div>
           </div>
+
+          <div v-if="item.muscleTags && item.muscleTags.length > 0" class="checkin-muscle-tags">
+            <span class="muscle-tags-label">肌感：</span>
+            <el-tag
+              v-for="tag in getMuscleTagInfos(item.muscleTags)"
+              :key="tag.value"
+              size="small"
+              effect="light"
+              class="muscle-tag-item"
+              :style="{ borderColor: tag.color, color: tag.color, backgroundColor: tag.color + '10' }"
+            >
+              {{ tag.emoji }} {{ tag.label }}
+            </el-tag>
+          </div>
           
           <div v-if="item.note" class="checkin-note">
             <span class="note-label">备注：</span>{{ item.note }}
@@ -132,7 +146,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
-import { sportTypes, getSportTypeInfo, timeAgo } from '@/utils/common'
+import { sportTypes, getSportTypeInfo, muscleTags, timeAgo } from '@/utils/common'
 import { useInfiniteScroll } from '@/composables/useInfiniteScroll'
 import InfiniteScrollList from '@/components/InfiniteScrollList.vue'
 
@@ -183,6 +197,11 @@ const getStatusType = (status) => {
     tired: 'danger'
   }
   return map[status] || 'info'
+}
+
+const getMuscleTagInfos = (tagValues) => {
+  if (!tagValues || tagValues.length === 0) return []
+  return tagValues.map(v => muscleTags.find(t => t.value === v)).filter(Boolean)
 }
 
 const handleDelete = (id) => {
@@ -326,6 +345,25 @@ const handleDelete = (id) => {
   width: 1px;
   height: 40px;
   background: #e4e7ed;
+}
+
+.checkin-muscle-tags {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.muscle-tags-label {
+  font-size: 13px;
+  color: #909399;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.muscle-tag-item {
+  border-width: 1px;
 }
 
 .checkin-note {

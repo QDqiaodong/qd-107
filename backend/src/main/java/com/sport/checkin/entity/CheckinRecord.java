@@ -26,6 +26,8 @@ public class CheckinRecord {
 
     private String remark;
 
+    private String muscleTags;
+
     private String images;
 
     private LocalDate checkinDate;

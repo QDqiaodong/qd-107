@@ -121,11 +121,84 @@
         <el-button v-if="activeStep < 3" type="primary" @click="nextStep" :disabled="!canNext">
           下一步
         </el-button>
-        <el-button v-if="activeStep === 3" type="success" @click="submitCheckin">
+        <el-button v-if="activeStep === 3" type="success" @click="openMuscleTagDialog">
           完成打卡
         </el-button>
       </div>
     </div>
+
+    <el-dialog
+      v-model="muscleTagDialogVisible"
+      title="记录一下你的肌感体验"
+      width="500px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      class="muscle-tag-dialog"
+    >
+      <div class="muscle-tag-intro">
+        <el-icon :size="20" color="#409eff"><ChatDotRound /></el-icon>
+        <span>快速勾选体感词，让记录更生动</span>
+      </div>
+      
+      <div class="muscle-tag-section">
+        <div class="section-label">整体感受</div>
+        <div class="tag-group">
+          <div
+            v-for="tag in overallTags"
+            :key="tag.value"
+            class="muscle-tag"
+            :class="{ active: selectedTags.includes(tag.value) }"
+            :style="{ '--tag-color': tag.color }"
+            @click="toggleTag(tag.value)"
+          >
+            <span class="tag-emoji">{{ tag.emoji }}</span>
+            <span class="tag-label">{{ tag.label }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="muscle-tag-section">
+        <div class="section-label">部位感受</div>
+        <div class="tag-group">
+          <div
+            v-for="tag in bodyPartTags"
+            :key="tag.value"
+            class="muscle-tag"
+            :class="{ active: selectedTags.includes(tag.value) }"
+            :style="{ '--tag-color': tag.color }"
+            @click="toggleTag(tag.value)"
+          >
+            <span class="tag-emoji">{{ tag.emoji }}</span>
+            <span class="tag-label">{{ tag.label }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="muscle-tag-summary">
+        <div class="summary-label">已选标签：</div>
+        <div class="selected-tags" v-if="selectedTagInfos.length > 0">
+          <el-tag
+            v-for="tag in selectedTagInfos"
+            :key="tag.value"
+            size="small"
+            effect="light"
+            :style="{ borderColor: tag.color, color: tag.color, backgroundColor: tag.color + '10' }"
+          >
+            {{ tag.emoji }} {{ tag.label }}
+          </el-tag>
+        </div>
+        <div v-else class="no-tags-tip">暂未选择，可跳过</div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="skipMuscleTags">跳过</el-button>
+          <el-button type="primary" @click="confirmMuscleTags">
+            {{ selectedTags.length > 0 ? '保存并完成' : '完成打卡' }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -133,14 +206,17 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ChatDotRound } from '@element-plus/icons-vue'
 import { useCheckinStore } from '@/stores/checkin'
-import { sportTypes, bodyStatus, extractCommonPhrases } from '@/utils/common'
+import { sportTypes, bodyStatus, muscleTags, extractCommonPhrases } from '@/utils/common'
 
 const router = useRouter()
 const checkinStore = useCheckinStore()
 
 const activeStep = ref(0)
 const fileList = ref([])
+const muscleTagDialogVisible = ref(false)
+const selectedTags = ref([])
 
 const defaultForm = {
   type: '',
@@ -155,6 +231,20 @@ const defaultForm = {
 }
 
 const formData = reactive({ ...defaultForm })
+
+const overallTags = computed(() => {
+  const overallValues = ['easy', 'sweaty', 'energetic', 'tired', 'refreshed', 'normal', 'breathless', 'pumped']
+  return muscleTags.filter(tag => overallValues.includes(tag.value))
+})
+
+const bodyPartTags = computed(() => {
+  const bodyPartValues = ['soreLegs', 'soreArms', 'soreAbs', 'pain']
+  return muscleTags.filter(tag => bodyPartValues.includes(tag.value))
+})
+
+const selectedTagInfos = computed(() => {
+  return selectedTags.value.map(v => muscleTags.find(t => t.value === v)).filter(Boolean)
+})
 
 const unitMap = {
   running: '公里',
@@ -253,7 +343,33 @@ const prevStep = () => {
   }
 }
 
+const openMuscleTagDialog = () => {
+  selectedTags.value = []
+  muscleTagDialogVisible.value = true
+}
+
+const toggleTag = (tagValue) => {
+  const index = selectedTags.value.indexOf(tagValue)
+  if (index > -1) {
+    selectedTags.value.splice(index, 1)
+  } else {
+    selectedTags.value.push(tagValue)
+  }
+}
+
+const buildSummaryNote = () => {
+  const tagLabels = selectedTagInfos.value.map(t => t.label)
+  if (tagLabels.length === 0) return formData.note
+  
+  const tagText = tagLabels.join('、')
+  if (formData.note) {
+    return `【${tagText}】${formData.note}`
+  }
+  return tagText
+}
+
 const submitCheckin = () => {
+  const summaryNote = buildSummaryNote()
   checkinStore.addCheckin({
     type: formData.type,
     typeName: formData.typeName,
@@ -262,7 +378,8 @@ const submitCheckin = () => {
     amountUnit: formData.amountUnit,
     status: formData.status,
     statusText: formData.statusText,
-    note: formData.note,
+    note: summaryNote,
+    muscleTags: [...selectedTags.value],
     images: [...formData.images]
   })
   
@@ -272,11 +389,122 @@ const submitCheckin = () => {
     router.push('/')
   }, 1000)
 }
+
+const skipMuscleTags = () => {
+  muscleTagDialogVisible.value = false
+  submitCheckin()
+}
+
+const confirmMuscleTags = () => {
+  muscleTagDialogVisible.value = false
+  submitCheckin()
+}
 </script>
 
 <style scoped>
 .checkin-steps {
   padding: 20px 0 40px;
+}
+
+.muscle-tag-dialog :deep(.el-dialog__body) {
+  padding-top: 10px;
+}
+
+.muscle-tag-intro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #ecf5ff;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #409eff;
+}
+
+.muscle-tag-section {
+  margin-bottom: 20px;
+}
+
+.section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 12px;
+}
+
+.tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.muscle-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1.5px solid #e4e7ed;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fff;
+  user-select: none;
+}
+
+.muscle-tag:hover {
+  border-color: var(--tag-color, #409eff);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.muscle-tag.active {
+  border-color: var(--tag-color, #409eff);
+  background: color-mix(in srgb, var(--tag-color, #409eff) 10%, white);
+}
+
+.tag-emoji {
+  font-size: 16px;
+}
+
+.tag-label {
+  font-size: 13px;
+  color: #606266;
+}
+
+.muscle-tag.active .tag-label {
+  color: var(--tag-color, #409eff);
+  font-weight: 500;
+}
+
+.muscle-tag-summary {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.summary-label {
+  font-size: 13px;
+  color: #909399;
+  margin-bottom: 10px;
+}
+
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.no-tags-tip {
+  font-size: 13px;
+  color: #c0c4cc;
+  font-style: italic;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .step-content {

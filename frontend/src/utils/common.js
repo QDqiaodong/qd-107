@@ -14,6 +14,21 @@ export const bodyStatus = [
   { value: 'tired', label: '比较累', color: '#f56c6c' }
 ]
 
+export const muscleTags = [
+  { value: 'easy', label: '轻松', emoji: '😊', color: '#67c23a' },
+  { value: 'sweaty', label: '爆汗', emoji: '💦', color: '#409eff' },
+  { value: 'soreLegs', label: '腿酸', emoji: '🦵', color: '#e6a23c' },
+  { value: 'soreArms', label: '胳膊酸', emoji: '💪', color: '#e6a23c' },
+  { value: 'soreAbs', label: '腹部酸', emoji: '🔥', color: '#f56c6c' },
+  { value: 'energetic', label: '精力充沛', emoji: '⚡', color: '#85ce61' },
+  { value: 'tired', label: '疲惫', emoji: '😫', color: '#909399' },
+  { value: 'refreshed', label: '神清气爽', emoji: '🌿', color: '#67c23a' },
+  { value: 'normal', label: '状态一般', emoji: '😐', color: '#909399' },
+  { value: 'pain', label: '有点疼', emoji: '😣', color: '#f56c6c' },
+  { value: 'breathless', label: '喘得厉害', emoji: '😤', color: '#409eff' },
+  { value: 'pumped', label: '泵感十足', emoji: '💯', color: '#67c23a' }
+]
+
 export const getSportTypeInfo = (type) => {
   return sportTypes.find(t => t.value === type) || sportTypes[sportTypes.length - 1]
 }

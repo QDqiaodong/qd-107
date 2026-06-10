@@ -63,6 +63,29 @@ const getMockCheckins = () => {
     ''
   ]
   
+  const muscleTagOptions = [
+    { value: 'easy', label: '轻松' },
+    { value: 'sweaty', label: '爆汗' },
+    { value: 'soreLegs', label: '腿酸' },
+    { value: 'soreArms', label: '胳膊酸' },
+    { value: 'soreAbs', label: '腹部酸' },
+    { value: 'energetic', label: '精力充沛' },
+    { value: 'tired', label: '疲惫' },
+    { value: 'refreshed', label: '神清气爽' },
+    { value: 'normal', label: '状态一般' },
+    { value: 'pain', label: '有点疼' },
+    { value: 'breathless', label: '喘得厉害' },
+    { value: 'pumped', label: '泵感十足' }
+  ]
+  
+  const typeTagMap = {
+    running: ['sweaty', 'soreLegs', 'breathless', 'energetic', 'tired', 'easy'],
+    cycling: ['soreLegs', 'sweaty', 'easy', 'energetic', 'tired'],
+    swimming: ['sweaty', 'tired', 'refreshed', 'breathless', 'easy'],
+    yoga: ['refreshed', 'easy', 'energetic', 'soreAbs'],
+    gym: ['pumped', 'soreArms', 'soreAbs', 'soreLegs', 'pain', 'energetic']
+  }
+  
   const checkins = []
   let id = 1
   
@@ -91,6 +114,26 @@ const getMockCheckins = () => {
       date.setDate(date.getDate() - dayOffset)
       date.setHours(hour, minute, 0, 0)
       
+      const hasTags = Math.random() > 0.3
+      let muscleTags = []
+      if (hasTags) {
+        const availableTags = typeTagMap[typeInfo.type] || muscleTagOptions.map(t => t.value)
+        const numTags = Math.floor(Math.random() * 3) + 1
+        const shuffled = [...availableTags].sort(() => Math.random() - 0.5)
+        muscleTags = shuffled.slice(0, Math.min(numTags, availableTags.length))
+      }
+      
+      let note = notes[Math.floor(Math.random() * notes.length)]
+      if (muscleTags.length > 0) {
+        const tagLabels = muscleTags.map(v => muscleTagOptions.find(t => t.value === v)?.label).filter(Boolean)
+        const tagText = tagLabels.join('、')
+        if (note) {
+          note = `【${tagText}】${note}`
+        } else {
+          note = tagText
+        }
+      }
+      
       checkins.push({
         id: id++,
         type: typeInfo.type,
@@ -100,7 +143,8 @@ const getMockCheckins = () => {
         amountUnit: typeInfo.unit,
         status: statusInfo.value,
         statusText: statusInfo.text,
-        note: notes[Math.floor(Math.random() * notes.length)],
+        note: note,
+        muscleTags: muscleTags,
         images: [],
         createTime: date.toISOString()
       })

@@ -64,6 +64,7 @@ CREATE TABLE checkin_record (
     calorie DECIMAL(10,2) COMMENT '消耗卡路里',
     distance DECIMAL(10,2) COMMENT '距离(公里)',
     remark VARCHAR(500) COMMENT '打卡备注',
+    muscle_tags VARCHAR(255) COMMENT '肌感标签，多个逗号分隔',
     images VARCHAR(1000) COMMENT '打卡图片，多个逗号分隔',
     checkin_date DATE NOT NULL COMMENT '打卡日期',
     checkin_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '打卡时间',
