@@ -3,12 +3,16 @@ package com.sport.checkin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sport.checkin.common.RedisLock;
+import com.sport.checkin.common.SimilarityUtils;
 import com.sport.checkin.dto.CheckinResultDTO;
 import com.sport.checkin.entity.CheckinRecord;
 import com.sport.checkin.entity.SportType;
 import com.sport.checkin.mapper.CheckinRecordMapper;
 import com.sport.checkin.service.CheckinRecordService;
 import com.sport.checkin.service.SportTypeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -22,10 +26,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, CheckinRecord> implements CheckinRecordService {
+
+    private static final Logger log = LoggerFactory.getLogger(CheckinRecordServiceImpl.class);
 
     private static final int MERGE_TIME_WINDOW_MINUTES = 5;
 
@@ -35,8 +42,21 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
 
     private static final double DISTANCE_SIMILARITY_RATIO = 0.1;
 
+    private static final double REMARK_SIMILARITY_THRESHOLD = 0.8;
+
+    private static final String LOCK_KEY_PREFIX = "checkin:lock:";
+
+    private static final int LOCK_EXPIRE_SECONDS = 10;
+
+    private static final int LOCK_RETRY_TIMES = 3;
+
+    private static final long LOCK_RETRY_INTERVAL_MS = 300;
+
     @Autowired
     private SportTypeService sportTypeService;
+
+    @Autowired
+    private RedisLock redisLock;
 
     @Override
     public List<CheckinRecord> getCheckinList(Long userId, Integer page, Integer size) {
@@ -66,15 +86,54 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
             }
         }
 
-        CheckinRecord similarRecord = findSimilarRecord(record);
-        if (similarRecord != null) {
-            CheckinRecord mergedRecord = mergeRecords(similarRecord, record);
-            updateById(mergedRecord);
-            return CheckinResultDTO.of(mergedRecord, true, "检测到短时间内存在相似打卡，已自动合并");
+        String lockKey = buildLockKey(record);
+        boolean locked = tryLockWithRetry(lockKey);
+        if (!locked) {
+            log.warn("获取打卡锁失败，重试后仍未获取，userId:{}, sportTypeId:{}", record.getUserId(), record.getSportTypeId());
+            CheckinRecord existing = findSimilarRecord(record);
+            if (existing != null) {
+                return CheckinResultDTO.of(existing, true, "检测到短时间内存在相似打卡，已自动合并");
+            }
+            throw new RuntimeException("系统繁忙，请稍后重试");
         }
 
-        save(record);
-        return CheckinResultDTO.of(record, false, "打卡成功");
+        try {
+            CheckinRecord similarRecord = findSimilarRecord(record);
+            if (similarRecord != null) {
+                CheckinRecord mergedRecord = mergeRecords(similarRecord, record);
+                updateById(mergedRecord);
+                log.info("打卡合并成功，userId:{}, sportTypeId:{}, 原记录id:{}", record.getUserId(), record.getSportTypeId(), similarRecord.getId());
+                return CheckinResultDTO.of(mergedRecord, true, "检测到短时间内存在相似打卡，已自动合并");
+            }
+
+            save(record);
+            log.info("打卡成功，userId:{}, sportTypeId:{}, 记录id:{}", record.getUserId(), record.getSportTypeId(), record.getId());
+            return CheckinResultDTO.of(record, false, "打卡成功");
+        } finally {
+            redisLock.unlock(lockKey);
+        }
+    }
+
+    private boolean tryLockWithRetry(String lockKey) {
+        for (int i = 0; i < LOCK_RETRY_TIMES; i++) {
+            boolean locked = redisLock.tryLock(lockKey, LOCK_EXPIRE_SECONDS, TimeUnit.SECONDS);
+            if (locked) {
+                return true;
+            }
+            if (i < LOCK_RETRY_TIMES - 1) {
+                try {
+                    Thread.sleep(LOCK_RETRY_INTERVAL_MS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
+    private String buildLockKey(CheckinRecord record) {
+        return LOCK_KEY_PREFIX + record.getUserId() + ":" + record.getSportTypeId();
     }
 
     private CheckinRecord findSimilarRecord(CheckinRecord newRecord) {
@@ -139,7 +198,7 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
         if (!StringUtils.hasText(r1) || !StringUtils.hasText(r2)) {
             return false;
         }
-        return r1.equals(r2);
+        return SimilarityUtils.isSimilar(r1.trim(), r2.trim(), REMARK_SIMILARITY_THRESHOLD);
     }
 
     private CheckinRecord mergeRecords(CheckinRecord existing, CheckinRecord newRecord) {
@@ -187,6 +246,9 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
         }
         if (r1.equals(r2)) {
             return r1;
+        }
+        if (SimilarityUtils.isSimilar(r1, r2, REMARK_SIMILARITY_THRESHOLD)) {
+            return r1.length() >= r2.length() ? r1 : r2;
         }
         return r1 + "；" + r2;
     }
