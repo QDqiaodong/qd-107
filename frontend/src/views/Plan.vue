@@ -8,6 +8,8 @@
       </el-button>
     </div>
 
+    <WeeklyScheduleBoard :daily-target="60" />
+
     <div class="plan-tabs">
       <el-tabs v-model="activeTab" class="plan-tabs-content">
         <el-tab-pane label="进行中" name="active">
@@ -104,7 +106,7 @@
       width="500px"
       :close-on-click-modal="false"
     >
-      <el-form :model="planForm" label-width="80px" ref="planFormRef">
+      <el-form :model="planForm" label-width="100px" ref="planFormRef">
         <el-form-item label="计划名称" prop="title" :rules="[{ required: true, message: '请输入计划名称', trigger: 'blur' }]">
           <el-input v-model="planForm.title" placeholder="例如：每周跑步3次" />
         </el-form-item>
@@ -118,10 +120,25 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="目标时长" prop="duration" :rules="[{ required: true, message: '请输入目标时长', trigger: 'blur' }]">
+          <el-input-number v-model="planForm.duration" :min="5" :max="480" :step="5" style="width: 100%;" />
+          <span style="font-size: 12px; color: #909399; margin-left: 8px;">分钟 / 每次</span>
+        </el-form-item>
+        <el-form-item label="训练日" prop="weekdays" :rules="[{ required: true, message: '请选择训练日', trigger: 'change' }]">
+          <el-checkbox-group v-model="planForm.weekdays" class="weekday-checkboxes">
+            <el-checkbox :label="1">周一</el-checkbox>
+            <el-checkbox :label="2">周二</el-checkbox>
+            <el-checkbox :label="3">周三</el-checkbox>
+            <el-checkbox :label="4">周四</el-checkbox>
+            <el-checkbox :label="5">周五</el-checkbox>
+            <el-checkbox :label="6">周六</el-checkbox>
+            <el-checkbox :label="0">周日</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
         <el-form-item label="运动目标" prop="target" :rules="[{ required: true, message: '请输入运动目标', trigger: 'blur' }]">
           <el-input v-model="planForm.target" type="textarea" :rows="2" placeholder="描述你的运动目标" />
         </el-form-item>
-        <el-form-item label="频率" prop="frequency" :rules="[{ required: true, message: '请输入执行频率', trigger: 'blur' }]">
+        <el-form-item label="频率描述" prop="frequency">
           <el-input v-model="planForm.frequency" placeholder="例如：每周一、三、五" />
         </el-form-item>
       </el-form>
@@ -134,10 +151,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ElMessage, ElMessageBox, ElForm } from 'element-plus'
+import { ref, computed, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
 import { sportTypes, getSportTypeInfo } from '@/utils/common'
+import WeeklyScheduleBoard from '@/components/WeeklyScheduleBoard.vue'
 
 const checkinStore = useCheckinStore()
 const activeTab = ref('active')
@@ -148,6 +166,8 @@ const planForm = ref({
   title: '',
   type: '',
   typeName: '',
+  duration: 30,
+  weekdays: [],
   target: '',
   frequency: ''
 })
@@ -179,6 +199,25 @@ const getTagType = (type) => {
   return map[type] || 'info'
 }
 
+const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
+const generateFrequencyText = (weekdays) => {
+  if (!weekdays || weekdays.length === 0) return ''
+  if (weekdays.length === 7) return '每天'
+  const sorted = [...weekdays].sort((a, b) => {
+    if (a === 0) return 1
+    if (b === 0) return -1
+    return a - b
+  })
+  return '每周' + sorted.map(d => weekdayNames[d].replace('周', '')).join('、')
+}
+
+watch(() => planForm.value.weekdays, (newWeekdays) => {
+  if (newWeekdays && newWeekdays.length > 0) {
+    planForm.value.frequency = generateFrequencyText(newWeekdays)
+  }
+}, { deep: true })
+
 const handleTypeChange = (value) => {
   const typeInfo = sportTypes.find(t => t.value === value)
   if (typeInfo) {
@@ -198,6 +237,8 @@ const handleSubmit = async () => {
         title: '',
         type: '',
         typeName: '',
+        duration: 30,
+        weekdays: [],
         target: '',
         frequency: ''
       }
@@ -309,6 +350,12 @@ const handleDelete = (id) => {
 
 .target-label {
   color: #909399;
+}
+
+.weekday-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 @media (max-width: 768px) {

@@ -120,6 +120,8 @@ const getMockPlans = () => {
       typeName: '跑步',
       target: '每次5公里，配速6分以内',
       frequency: '每周一、三、五',
+      duration: 45,
+      weekdays: [1, 3, 5],
       completed: false,
       createTime: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 3).toISOString()
     },
@@ -130,6 +132,8 @@ const getMockPlans = () => {
       typeName: '瑜伽',
       target: '每天早上6:30开始，30分钟',
       frequency: '每天',
+      duration: 30,
+      weekdays: [1, 2, 3, 4, 5, 6, 0],
       completed: true,
       createTime: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 5).toISOString()
     },
@@ -140,8 +144,22 @@ const getMockPlans = () => {
       typeName: '骑行',
       target: '周末骑行20公里',
       frequency: '每周日',
+      duration: 90,
+      weekdays: [0],
       completed: false,
       createTime: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7).toISOString()
+    },
+    {
+      id: 4,
+      title: '力量训练',
+      type: 'gym',
+      typeName: '健身',
+      target: '每周2次力量训练，增肌塑形',
+      frequency: '每周二、六',
+      duration: 60,
+      weekdays: [2, 6],
+      completed: false,
+      createTime: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 2).toISOString()
     }
   ]
 }

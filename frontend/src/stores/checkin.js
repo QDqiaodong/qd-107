@@ -23,6 +23,29 @@ export const useCheckinStore = defineStore('checkin', {
       const now = new Date()
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
       return state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+    },
+    activePlans: (state) => state.plans.filter(p => !p.completed),
+    weeklySchedule: (state) => {
+      const days = [0, 1, 2, 3, 4, 5, 6]
+      return days.map(day => {
+        const dayPlans = state.plans.filter(p => !p.completed && p.weekdays && p.weekdays.includes(day))
+        const totalDuration = dayPlans.reduce((sum, p) => sum + (p.duration || 0), 0)
+        return {
+          day,
+          dayName: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][day],
+          plans: dayPlans,
+          totalDuration,
+          isToday: new Date().getDay() === day
+        }
+      })
+    },
+    weeklyTotalDuration: (state) => {
+      const days = [0, 1, 2, 3, 4, 5, 6]
+      return days.reduce((total, day) => {
+        const dayPlans = state.plans.filter(p => !p.completed && p.weekdays && p.weekdays.includes(day))
+        const dayDuration = dayPlans.reduce((sum, p) => sum + (p.duration || 0), 0)
+        return total + dayDuration
+      }, 0)
     }
   },
   actions: {
@@ -76,6 +99,28 @@ export const useCheckinStore = defineStore('checkin', {
     deletePlan(id) {
       this.plans = this.plans.filter(p => p.id !== id)
       savePlans(this.plans)
+    },
+    updatePlan(id, data) {
+      const plan = this.plans.find(p => p.id === id)
+      if (plan) {
+        Object.assign(plan, data)
+        savePlans(this.plans)
+      }
+    },
+    togglePlanWeekday(planId, weekday) {
+      const plan = this.plans.find(p => p.id === planId)
+      if (plan) {
+        if (!plan.weekdays) {
+          plan.weekdays = []
+        }
+        const index = plan.weekdays.indexOf(weekday)
+        if (index > -1) {
+          plan.weekdays.splice(index, 1)
+        } else {
+          plan.weekdays.push(weekday)
+        }
+        savePlans(this.plans)
+      }
     },
     updateUserInfo(info) {
       this.userInfo = { ...this.userInfo, ...info }
