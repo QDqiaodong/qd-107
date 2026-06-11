@@ -152,20 +152,37 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="filter-bar">
-        <span class="section-title" style="margin-bottom: 0;">运动类型筛选</span>
-        <div class="filter-tags">
+    <div class="card filter-card">
+      <div class="filter-header">
+        <div class="filter-title">
+          <el-icon :size="20" color="#409eff"><Filter /></el-icon>
+          <span class="section-title" style="margin-bottom: 0;">动态筛选</span>
+        </div>
+        <el-button type="primary" plain @click="openDrawer">
+          <el-icon><Setting /></el-icon>
+          <span>高级筛选</span>
+          <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
+        </el-button>
+      </div>
+      
+      <div v-if="activeFilterLabels.length > 0" class="active-filters">
+        <span class="active-filters-label">已选：</span>
+        <div class="active-filter-tags">
           <el-tag
-            v-for="type in filterTypes"
-            :key="type.value"
-            :type="activeFilter === type.value ? 'primary' : 'info'"
-            effect="plain"
-            style="cursor: pointer; margin-right: 8px;"
-            @click="activeFilter = type.value"
+            v-for="(label, index) in activeFilterLabels"
+            :key="index"
+            type="primary"
+            effect="light"
+            closable
+            size="small"
+            class="active-filter-tag"
+            @close="removeFilterByLabel(label)"
           >
-            {{ type.label }}
+            {{ label }}
           </el-tag>
+          <el-button text type="primary" size="small" @click="resetFilters">
+            全部清除
+          </el-button>
         </div>
       </div>
     </div>
@@ -233,11 +250,91 @@
         </div>
       </template>
     </InfiniteScrollList>
+
+    <el-drawer
+      v-model="drawerVisible"
+      title="筛选条件"
+      direction="rtl"
+      size="380px"
+      :before-close="handleDrawerClose"
+    >
+      <div class="filter-drawer-content">
+        <div class="filter-section">
+          <div class="filter-section-title">
+            <el-icon :size="16" color="#67c23a"><Timer /></el-icon>
+            <span>运动类型</span>
+          </div>
+          <div class="filter-type-grid">
+            <div
+              v-for="type in sportTypes"
+              :key="type.value"
+              class="filter-type-item"
+              :class="{ active: tempFilterParams.types.includes(type.value) }"
+              @click="toggleSportType(type.value)"
+            >
+              <div class="type-icon" :style="{ background: type.color + '20' }">
+                <el-icon :size="22" :color="type.color">
+                  <component :is="type.icon" />
+                </el-icon>
+              </div>
+              <span class="type-name">{{ type.label }}</span>
+              <el-icon v-if="tempFilterParams.types.includes(type.value)" class="check-icon" :size="16" color="#409eff">
+                <CircleCheckFilled />
+              </el-icon>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-title">
+            <el-icon :size="16" color="#e6a23c"><Clock /></el-icon>
+            <span>训练时长（分钟）</span>
+          </div>
+          <div class="duration-filter">
+            <el-slider
+              v-model="durationRange"
+              range
+              :min="0"
+              :max="240"
+              :step="10"
+              :marks="durationMarks"
+              show-stops
+            />
+            <div class="duration-range-display">
+              <span class="duration-value">{{ durationRange[0] }} 分钟</span>
+              <span class="duration-separator">至</span>
+              <span class="duration-value">{{ durationRange[1] }} 分钟</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-title">
+            <el-icon :size="16" color="#f56c6c"><Picture /></el-icon>
+            <span>是否带图</span>
+          </div>
+          <div class="image-filter">
+            <el-radio-group v-model="tempFilterParams.hasImage">
+              <el-radio-button :value="null">全部</el-radio-button>
+              <el-radio-button :value="true">有图</el-radio-button>
+              <el-radio-button :value="false">无图</el-radio-button>
+            </el-radio-group>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="drawer-footer">
+          <el-button @click="resetFilters">重置</el-button>
+          <el-button type="primary" @click="applyFilters">应用筛选</el-button>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
@@ -250,9 +347,29 @@ import WorkoutSummaryBar from '@/components/WorkoutSummaryBar.vue'
 const router = useRouter()
 const checkinStore = useCheckinStore()
 
-const filterTypes = [{ value: 'all', label: '全部' }, ...sportTypes]
-const activeFilter = ref('all')
 const hotTypes = ref([])
+const drawerVisible = ref(false)
+
+const defaultFilterParams = {
+  types: [],
+  minDuration: null,
+  maxDuration: null,
+  hasImage: null
+}
+
+const filterParams = reactive({ ...defaultFilterParams })
+const tempFilterParams = reactive({ ...defaultFilterParams })
+const durationRange = ref([0, 240])
+
+const durationMarks = {
+  0: '0',
+  30: '30',
+  60: '60',
+  90: '90',
+  120: '120',
+  180: '180',
+  240: '240+'
+}
 
 const loadHotTypes = async () => {
   try {
@@ -288,7 +405,13 @@ onMounted(() => {
 })
 
 const fetchCheckins = (page, pageSize) => {
-  return checkinStore.getCheckinsByPage(page, pageSize, activeFilter.value)
+  const params = {
+    types: filterParams.types.length > 0 ? filterParams.types : undefined,
+    minDuration: filterParams.minDuration,
+    maxDuration: filterParams.maxDuration,
+    hasImage: filterParams.hasImage
+  }
+  return checkinStore.getCheckinsByPage(page, pageSize, params)
 }
 
 const {
@@ -304,9 +427,122 @@ const {
   immediate: false
 })
 
-watch(activeFilter, () => {
+watch(() => ({ ...filterParams }), () => {
   refresh()
-}, { immediate: true })
+}, { immediate: true, deep: true })
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (filterParams.types.length > 0) count++
+  if (filterParams.minDuration !== null || filterParams.maxDuration !== null) count++
+  if (filterParams.hasImage !== null) count++
+  return count
+})
+
+const activeFilterLabels = computed(() => {
+  const labels = []
+  if (filterParams.types.length > 0) {
+    filterParams.types.forEach(typeValue => {
+      const typeInfo = sportTypes.find(t => t.value === typeValue)
+      if (typeInfo) {
+        labels.push(typeInfo.label)
+      }
+    })
+  }
+  if (filterParams.minDuration !== null || filterParams.maxDuration !== null) {
+    const min = filterParams.minDuration || 0
+    const max = filterParams.maxDuration || '不限'
+    labels.push(`${min}-${max}分钟`)
+  }
+  if (filterParams.hasImage === true) {
+    labels.push('有图')
+  } else if (filterParams.hasImage === false) {
+    labels.push('无图')
+  }
+  return labels
+})
+
+const toggleSportType = (typeValue) => {
+  const index = tempFilterParams.types.indexOf(typeValue)
+  if (index > -1) {
+    tempFilterParams.types.splice(index, 1)
+  } else {
+    tempFilterParams.types.push(typeValue)
+  }
+}
+
+const openDrawer = () => {
+  tempFilterParams.types = [...filterParams.types]
+  tempFilterParams.minDuration = filterParams.minDuration
+  tempFilterParams.maxDuration = filterParams.maxDuration
+  tempFilterParams.hasImage = filterParams.hasImage
+  
+  if (filterParams.minDuration !== null || filterParams.maxDuration !== null) {
+    durationRange.value = [filterParams.minDuration || 0, filterParams.maxDuration || 240]
+  } else {
+    durationRange.value = [0, 240]
+  }
+  
+  drawerVisible.value = true
+}
+
+const handleDrawerClose = (done) => {
+  done()
+}
+
+const applyFilters = () => {
+  filterParams.types = [...tempFilterParams.types]
+  filterParams.hasImage = tempFilterParams.hasImage
+  
+  if (durationRange.value[0] > 0) {
+    filterParams.minDuration = durationRange.value[0]
+  } else {
+    filterParams.minDuration = null
+  }
+  if (durationRange.value[1] < 240) {
+    filterParams.maxDuration = durationRange.value[1]
+  } else {
+    filterParams.maxDuration = null
+  }
+  
+  drawerVisible.value = false
+  ElMessage.success('筛选条件已应用')
+}
+
+const resetFilters = () => {
+  tempFilterParams.types = []
+  tempFilterParams.minDuration = null
+  tempFilterParams.maxDuration = null
+  tempFilterParams.hasImage = null
+  durationRange.value = [0, 240]
+  
+  filterParams.types = []
+  filterParams.minDuration = null
+  filterParams.maxDuration = null
+  filterParams.hasImage = null
+}
+
+const removeFilterByLabel = (label) => {
+  const typeInfo = sportTypes.find(t => t.label === label)
+  if (typeInfo) {
+    const index = filterParams.types.indexOf(typeInfo.value)
+    if (index > -1) {
+      filterParams.types.splice(index, 1)
+    }
+    return
+  }
+  
+  if (label === '有图' || label === '无图') {
+    filterParams.hasImage = null
+    return
+  }
+  
+  if (label.includes('分钟') && label.includes('-')) {
+    filterParams.minDuration = null
+    filterParams.maxDuration = null
+    return
+  }
+}
 
 const getSportTypeIcon = (type) => {
   const iconMap = {
@@ -629,21 +865,173 @@ const handleDelete = (id) => {
   margin-top: 4px;
 }
 
-.filter-bar {
+.filter-card {
+  margin-bottom: 16px;
+}
+
+.filter-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.filter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 12px;
+  background: #f56c6c;
+  color: #fff;
+  border-radius: 9px;
+  margin-left: 4px;
+}
+
+.active-filters {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.active-filters-label {
+  font-size: 13px;
+  color: #909399;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.active-filter-tags {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.active-filter-tag {
+  margin-right: 0 !important;
+}
+
+.filter-drawer-content {
+  padding: 0 10px;
+}
+
+.filter-section {
+  margin-bottom: 28px;
+}
+
+.filter-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+}
+
+.filter-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
-.filter-tags {
+.filter-type-item {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background: #fafafa;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border: 2px solid transparent;
+}
+
+.filter-type-item:hover {
+  background: #f0f9ff;
+  border-color: #b3d8ff;
+}
+
+.filter-type-item.active {
+  background: #ecf5ff;
+  border-color: #409eff;
+}
+
+.filter-type-item .type-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-type-item .type-name {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.filter-type-item.active .type-name {
+  color: #409eff;
+}
+
+.filter-type-item .check-icon {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.duration-filter {
+  padding: 0 8px;
+}
+
+.duration-range-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.duration-value {
+  font-weight: 600;
+  color: #409eff;
+  font-size: 16px;
+}
+
+.duration-separator {
+  color: #c0c4cc;
+}
+
+.image-filter {
+  padding: 0 8px;
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .checkin-scroll {
-  height: calc(100vh - 380px);
+  height: calc(100vh - 420px);
   min-height: 400px;
   margin-top: 16px;
 }
@@ -763,9 +1151,8 @@ const handleDelete = (id) => {
     height: 40px;
   }
   
-  .filter-bar {
-    flex-direction: column;
-    align-items: flex-start;
+  .filter-type-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
   
   .goal-card {

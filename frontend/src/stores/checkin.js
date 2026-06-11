@@ -262,13 +262,37 @@ export const useCheckinStore = defineStore('checkin', {
     }
   },
   actions: {
-    getCheckinsByPage(page, pageSize, type = 'all') {
+    getCheckinsByPage(page, pageSize, filter = {}) {
       return new Promise((resolve) => {
         setTimeout(() => {
           let filtered = this.checkins
+          
+          const { type = 'all', types = [], minDuration, maxDuration, hasImage } = filter
+          
           if (type !== 'all') {
-            filtered = this.checkins.filter(item => item.type === type)
+            filtered = filtered.filter(item => item.type === type)
           }
+          
+          if (types && types.length > 0) {
+            filtered = filtered.filter(item => types.includes(item.type))
+          }
+          
+          if (minDuration !== undefined && minDuration !== null) {
+            filtered = filtered.filter(item => (item.duration || 0) >= minDuration)
+          }
+          
+          if (maxDuration !== undefined && maxDuration !== null) {
+            filtered = filtered.filter(item => (item.duration || 0) <= maxDuration)
+          }
+          
+          if (hasImage !== undefined && hasImage !== null) {
+            if (hasImage) {
+              filtered = filtered.filter(item => item.images && item.images.length > 0)
+            } else {
+              filtered = filtered.filter(item => !item.images || item.images.length === 0)
+            }
+          }
+          
           const start = (page - 1) * pageSize
           const end = start + pageSize
           const list = filtered.slice(start, end)
