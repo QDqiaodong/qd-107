@@ -41,6 +41,85 @@
       </div>
     </div>
 
+    <div class="card goal-card" v-if="checkinStore.monthGoalProgress" @click="goGoal">
+      <div class="goal-card-header">
+        <div class="goal-card-title">
+          <el-icon :size="20" color="#ff6b6b"><Flag /></el-icon>
+          <span>月度冲线目标</span>
+        </div>
+        <div class="goal-card-action">
+          <span>查看详情</span>
+          <el-icon :size="16"><ArrowRight /></el-icon>
+        </div>
+      </div>
+      <div class="goal-card-progress">
+        <div class="goal-progress-item">
+          <div class="goal-progress-top">
+            <span class="goal-progress-label">打卡次数</span>
+            <span class="goal-progress-num">
+              {{ checkinStore.monthGoalProgress.checkinCount.current }}/{{ checkinStore.monthGoalProgress.checkinCount.target }}
+            </span>
+          </div>
+          <div class="goal-progress-bar">
+            <div class="goal-progress-fill" :style="{ 
+              width: checkinStore.monthGoalProgress.checkinCount.progress + '%',
+              background: 'linear-gradient(90deg, #667eea, #764ba2)'
+            }"></div>
+          </div>
+        </div>
+        <div class="goal-progress-item">
+          <div class="goal-progress-top">
+            <span class="goal-progress-label">运动时长</span>
+            <span class="goal-progress-num">
+              {{ checkinStore.monthGoalProgress.totalDuration.current }}/{{ checkinStore.monthGoalProgress.totalDuration.target }}分钟
+            </span>
+          </div>
+          <div class="goal-progress-bar">
+            <div class="goal-progress-fill" :style="{ 
+              width: checkinStore.monthGoalProgress.totalDuration.progress + '%',
+              background: 'linear-gradient(90deg, #f093fb, #f5576c)'
+            }"></div>
+          </div>
+        </div>
+        <div class="goal-progress-item">
+          <div class="goal-progress-top">
+            <span class="goal-progress-label">消耗热量</span>
+            <span class="goal-progress-num">
+              {{ checkinStore.monthGoalProgress.totalCalorie.current }}/{{ checkinStore.monthGoalProgress.totalCalorie.target }}千卡
+            </span>
+          </div>
+          <div class="goal-progress-bar">
+            <div class="goal-progress-fill" :style="{ 
+              width: checkinStore.monthGoalProgress.totalCalorie.progress + '%',
+              background: 'linear-gradient(90deg, #fa709a, #fee140)'
+            }"></div>
+          </div>
+        </div>
+      </div>
+      <div class="goal-card-footer">
+        <span class="goal-remaining">
+          还剩 <b>{{ checkinStore.monthGoalProgress.remainingDays }}</b> 天
+        </span>
+        <span class="goal-daily-tip">
+          每天需 {{ checkinStore.monthGoalProgress.checkinCount.dailyNeeded }} 次打卡
+        </span>
+      </div>
+    </div>
+
+    <div class="card goal-card goal-empty-card" v-else @click="goGoal">
+      <div class="goal-empty-content">
+        <el-icon :size="32" color="#c0c4cc"><Flag /></el-icon>
+        <div class="goal-empty-text">
+          <span class="goal-empty-title">设置月度冲线目标</span>
+          <span class="goal-empty-desc">设定目标，让运动更有动力</span>
+        </div>
+        <el-button type="primary" size="small">
+          去设置
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+      </div>
+    </div>
+
     <div class="card hot-types-card">
       <div class="hot-types-header">
         <el-icon :size="20" color="#f56c6c"><HotWater /></el-icon>
@@ -215,6 +294,10 @@ const goCheckin = (type) => {
   })
 }
 
+const goGoal = () => {
+  router.push('/goal')
+}
+
 onMounted(() => {
   loadHotTypes()
 })
@@ -286,6 +369,139 @@ const handleDelete = (id) => {
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 20px;
+}
+
+.goal-card {
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.goal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.goal-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.goal-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.goal-card-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #909399;
+  transition: all 0.2s ease;
+}
+
+.goal-card:hover .goal-card-action {
+  color: #409eff;
+  transform: translateX(4px);
+}
+
+.goal-card-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.goal-progress-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goal-progress-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goal-progress-label {
+  font-size: 13px;
+  color: #606266;
+}
+
+.goal-progress-num {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.goal-progress-bar {
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.goal-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 13px;
+  color: #606266;
+}
+
+.goal-remaining b {
+  color: #f59e0b;
+  font-size: 15px;
+  margin: 0 2px;
+}
+
+.goal-daily-tip {
+  color: #909399;
+}
+
+.goal-empty-card {
+  cursor: pointer;
+}
+
+.goal-empty-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.goal-empty-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goal-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.goal-empty-desc {
+  font-size: 13px;
+  color: #909399;
 }
 
 .hot-types-card {
@@ -607,6 +823,16 @@ const handleDelete = (id) => {
   .filter-bar {
     flex-direction: column;
     align-items: flex-start;
+  }
+  
+  .goal-card {
+    margin-bottom: 16px;
+  }
+  
+  .goal-empty-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
   }
 }
 </style>

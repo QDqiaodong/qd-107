@@ -21,6 +21,10 @@
               <el-icon><List /></el-icon>
               <span>运动计划</span>
             </el-menu-item>
+            <el-menu-item index="/goal">
+              <el-icon><Flag /></el-icon>
+              <span>月度目标</span>
+            </el-menu-item>
             <el-menu-item index="/checkin">
               <el-icon><Edit /></el-icon>
               <span>运动打卡</span>

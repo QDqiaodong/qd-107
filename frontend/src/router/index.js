@@ -24,6 +24,12 @@ const routes = [
     name: 'Profile',
     component: () => import('@/views/Profile.vue'),
     meta: { title: '个人中心' }
+  },
+  {
+    path: '/goal',
+    name: 'Goal',
+    component: () => import('@/views/Goal.vue'),
+    meta: { title: '月度目标' }
   }
 ]
 

@@ -1,6 +1,7 @@
 const CHECKINS_KEY = 'sport_checkins'
 const PLANS_KEY = 'sport_plans'
 const USER_KEY = 'sport_user'
+const GOALS_KEY = 'sport_monthly_goals'
 
 export const getCheckins = () => {
   const data = localStorage.getItem(CHECKINS_KEY)
@@ -33,6 +34,27 @@ export const getUserInfo = () => {
 
 export const saveUserInfo = (info) => {
   localStorage.setItem(USER_KEY, JSON.stringify(info))
+}
+
+export const getMonthlyGoals = () => {
+  const data = localStorage.getItem(GOALS_KEY)
+  return data ? JSON.parse(data) : getMockMonthlyGoals()
+}
+
+export const saveMonthlyGoals = (goals) => {
+  localStorage.setItem(GOALS_KEY, JSON.stringify(goals))
+}
+
+const getMockMonthlyGoals = () => {
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return {
+    [currentMonth]: {
+      checkinCount: 20,
+      totalDuration: 1500,
+      totalCalorie: 5000
+    }
+  }
 }
 
 const getMockCheckins = () => {

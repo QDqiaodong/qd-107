@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
-import { getCheckins, saveCheckins, getPlans, savePlans, getUserInfo, saveUserInfo } from '@/utils/storage'
+import { getCheckins, saveCheckins, getPlans, savePlans, getUserInfo, saveUserInfo, getMonthlyGoals, saveMonthlyGoals } from '@/utils/storage'
 
 export const useCheckinStore = defineStore('checkin', {
   state: () => ({
     checkins: getCheckins(),
     plans: getPlans(),
-    userInfo: getUserInfo()
+    userInfo: getUserInfo(),
+    monthlyGoals: getMonthlyGoals()
   }),
   getters: {
     checkinCount: (state) => state.checkins.length,
@@ -140,6 +141,124 @@ export const useCheckinStore = defineStore('checkin', {
         }
       }
       return { days: maxStreak, records: streakRecords, endDate: streakEndDate }
+    },
+    currentMonthKey: () => {
+      const now = new Date()
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    },
+    currentMonthGoal: (state) => {
+      const now = new Date()
+      const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      return state.monthlyGoals[key] || null
+    },
+    monthCheckinCount: (state) => {
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      return state.checkins.filter(item => new Date(item.createTime) >= monthStart).length
+    },
+    monthTotalDuration: (state) => {
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const monthCheckins = state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+      return monthCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
+    },
+    monthTotalCalorie: (state) => {
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const monthCheckins = state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+      return monthCheckins.reduce((sum, item) => {
+        return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
+      }, 0)
+    },
+    monthGoalProgress: (state) => {
+      const now = new Date()
+      const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      const goal = state.monthlyGoals[key]
+      if (!goal) return null
+      
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const monthCheckins = state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+      
+      const checkinCount = monthCheckins.length
+      const totalDuration = monthCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
+      const totalCalorie = monthCheckins.reduce((sum, item) => {
+        return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
+      }, 0)
+      
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+      const currentDay = now.getDate()
+      const remainingDays = daysInMonth - currentDay
+      
+      return {
+        checkinCount: {
+          target: goal.checkinCount,
+          current: checkinCount,
+          progress: goal.checkinCount > 0 ? Math.min(100, (checkinCount / goal.checkinCount) * 100) : 0,
+          remaining: Math.max(0, goal.checkinCount - checkinCount),
+          dailyNeeded: remainingDays > 0 ? Math.ceil(Math.max(0, goal.checkinCount - checkinCount) / remainingDays) : 0
+        },
+        totalDuration: {
+          target: goal.totalDuration,
+          current: totalDuration,
+          progress: goal.totalDuration > 0 ? Math.min(100, (totalDuration / goal.totalDuration) * 100) : 0,
+          remaining: Math.max(0, goal.totalDuration - totalDuration),
+          dailyNeeded: remainingDays > 0 ? Math.ceil(Math.max(0, goal.totalDuration - totalDuration) / remainingDays) : 0
+        },
+        totalCalorie: {
+          target: goal.totalCalorie,
+          current: totalCalorie,
+          progress: goal.totalCalorie > 0 ? Math.min(100, (totalCalorie / goal.totalCalorie) * 100) : 0,
+          remaining: Math.max(0, goal.totalCalorie - totalCalorie),
+          dailyNeeded: remainingDays > 0 ? Math.ceil(Math.max(0, goal.totalCalorie - totalCalorie) / remainingDays) : 0
+        },
+        remainingDays,
+        daysInMonth,
+        currentDay
+      }
+    },
+    dailyGoalDetail: (state) => {
+      const now = new Date()
+      const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      const goal = state.monthlyGoals[key]
+      if (!goal) return []
+      
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+      const dailyData = []
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(now.getFullYear(), now.getMonth(), day)
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        
+        const dayCheckins = state.checkins.filter(item => {
+          const itemDate = new Date(item.createTime)
+          const itemDateStr = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}-${String(itemDate.getDate()).padStart(2, '0')}`
+          return itemDateStr === dateStr
+        })
+        
+        const dayDuration = dayCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
+        const dayCalorie = dayCheckins.reduce((sum, item) => {
+          return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
+        }, 0)
+        
+        const isPast = day < now.getDate()
+        const isToday = day === now.getDate()
+        const isFuture = day > now.getDate()
+        
+        dailyData.push({
+          day,
+          date: dateStr,
+          weekday: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()],
+          checkinCount: dayCheckins.length,
+          duration: dayDuration,
+          calorie: dayCalorie,
+          isPast,
+          isToday,
+          isFuture,
+          hasCheckin: dayCheckins.length > 0
+        })
+      }
+      
+      return dailyData
     }
   },
   actions: {
@@ -219,6 +338,12 @@ export const useCheckinStore = defineStore('checkin', {
     updateUserInfo(info) {
       this.userInfo = { ...this.userInfo, ...info }
       saveUserInfo(this.userInfo)
+    },
+    setMonthlyGoal(goalData) {
+      const now = new Date()
+      const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      this.monthlyGoals[key] = { ...goalData }
+      saveMonthlyGoals(this.monthlyGoals)
     }
   }
 })
