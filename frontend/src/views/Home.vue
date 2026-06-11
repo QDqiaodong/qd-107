@@ -197,23 +197,7 @@
             </el-button>
           </div>
           
-          <div class="checkin-stats">
-            <div class="stat-item">
-              <div class="stat-num">{{ item.duration }}</div>
-              <div class="stat-text">分钟</div>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-item">
-              <div class="stat-num">{{ item.amount }}</div>
-              <div class="stat-text">{{ item.amountUnit }}</div>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-item">
-              <el-tag :type="getStatusType(item.status)" size="small">
-                {{ item.statusText }}
-              </el-tag>
-            </div>
-          </div>
+          <WorkoutSummaryBar :item="item" />
 
           <div v-if="item.muscleTags && item.muscleTags.length > 0" class="checkin-muscle-tags">
             <span class="muscle-tags-label">肌感：</span>
@@ -261,6 +245,7 @@ import { sportTypes, getSportTypeInfo, muscleTags, timeAgo } from '@/utils/commo
 import { useInfiniteScroll } from '@/composables/useInfiniteScroll'
 import { sportTypeApi } from '@/api'
 import InfiniteScrollList from '@/components/InfiniteScrollList.vue'
+import WorkoutSummaryBar from '@/components/WorkoutSummaryBar.vue'
 
 const router = useRouter()
 const checkinStore = useCheckinStore()
@@ -333,16 +318,6 @@ const getSportTypeIcon = (type) => {
     other: 'MoreFilled'
   }
   return iconMap[type] || 'MoreFilled'
-}
-
-const getStatusType = (status) => {
-  const map = {
-    excellent: 'success',
-    good: 'success',
-    normal: 'warning',
-    tired: 'danger'
-  }
-  return map[status] || 'info'
 }
 
 const getMuscleTagInfos = (tagValues) => {
@@ -709,38 +684,6 @@ const handleDelete = (id) => {
   font-size: 13px;
   color: #909399;
   margin-top: 2px;
-}
-
-.checkin-stats {
-  display: flex;
-  align-items: center;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-
-.stat-item {
-  flex: 1;
-  text-align: center;
-}
-
-.stat-num {
-  font-size: 24px;
-  font-weight: bold;
-  color: #409eff;
-}
-
-.stat-text {
-  font-size: 13px;
-  color: #909399;
-  margin-top: 4px;
-}
-
-.stat-divider {
-  width: 1px;
-  height: 40px;
-  background: #e4e7ed;
 }
 
 .checkin-muscle-tags {
