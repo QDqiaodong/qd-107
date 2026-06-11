@@ -49,7 +49,8 @@ export const planApi = {
   create: (data) => request.post('/plan', data),
   update: (data) => request.put('/plan', data),
   delete: (id) => request.delete(`/plan/${id}`),
-  setReminder: (data) => request.post('/plan/reminder', data)
+  setReminder: (data) => request.post('/plan/reminder', data),
+  getExecutionSnapshots: (userId, status) => request.get('/plan/execution-snapshots', { params: { userId, status } })
 }
 
 export const dynamicApi = {

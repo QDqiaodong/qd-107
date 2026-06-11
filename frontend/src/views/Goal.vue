@@ -172,6 +172,72 @@
       </div>
     </div>
 
+    <div class="card plan-execution-card" v-if="planSnapshots.length > 0">
+      <div class="card-header">
+        <h3 class="section-title">计划执行率快照</h3>
+        <div class="execution-summary-mini">
+          <span class="mini-stat mini-goal-met">
+            <span class="mini-dot" style="background: #67c23a;"></span>
+            {{ planExecutionSummary.goalMet }}达标
+          </span>
+          <span class="mini-stat mini-in-progress">
+            <span class="mini-dot" style="background: #409eff;"></span>
+            {{ planExecutionSummary.inProgress }}进行
+          </span>
+          <span class="mini-stat mini-behind">
+            <span class="mini-dot" style="background: #f56c6c;"></span>
+            {{ planExecutionSummary.behind }}落后
+          </span>
+        </div>
+      </div>
+
+      <div class="execution-list">
+        <div
+          v-for="snap in planSnapshots"
+          :key="snap.planId"
+          class="execution-item"
+          :class="'exec-' + snap.status.toLowerCase().replace(/_/g, '-')"
+        >
+          <div class="exec-top">
+            <div class="exec-title">{{ snap.title }}</div>
+            <span class="exec-status-badge" :style="snap.statusInfo ? { color: snap.statusInfo.color, background: snap.statusInfo.bg, borderColor: snap.statusInfo.borderColor } : {}">
+              {{ snap.statusInfo?.label || '进行中' }}
+            </span>
+          </div>
+          <div class="exec-metrics">
+            <span class="exec-metric">
+              <span class="exec-metric-label">目标</span>
+              <span class="exec-metric-value">{{ snap.targetCount }}次 / {{ snap.targetDuration }}分钟</span>
+            </span>
+            <span class="exec-metric">
+              <span class="exec-metric-label">完成</span>
+              <span class="exec-metric-value" :style="{ color: snap.completionRate >= 100 ? '#67c23a' : '#303133' }">
+                {{ snap.completedCount }}次 / {{ snap.completedDuration }}分钟
+              </span>
+            </span>
+          </div>
+          <div class="exec-progress-track">
+            <div class="exec-progress-expected" :style="{ width: snap.expectedProgress + '%' }"></div>
+            <div
+              class="exec-progress-fill"
+              :style="{
+                width: Math.min(snap.completionRate, 100) + '%',
+                background: snap.status === 'GOAL_MET' ? 'linear-gradient(90deg, #67c23a88, #67c23a)'
+                  : snap.status === 'SIGNIFICANTLY_BEHIND' ? 'linear-gradient(90deg, #f56c6c88, #f56c6c)'
+                  : 'linear-gradient(90deg, #409eff88, #409eff)'
+              }"
+            ></div>
+          </div>
+          <div class="exec-footer">
+            <span class="exec-rate">完成率 {{ snap.completionRate }}%</span>
+            <span class="exec-deviation" :style="{ color: snap.deviation >= 0 ? '#67c23a' : '#f56c6c' }">
+              偏差 {{ snap.deviation >= 0 ? '+' : '' }}{{ snap.deviation }}%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <el-dialog v-model="showSetGoal" title="设置月度冲线目标" width="500px" class="set-goal-dialog">
       <el-form :model="goalForm" label-width="100px">
         <el-form-item label="打卡次数">
@@ -225,8 +291,10 @@ import {
   Plus
 } from '@element-plus/icons-vue'
 import { useCheckinStore } from '@/stores/checkin'
+import { usePlanExecution } from '@/composables/usePlanExecution'
 
 const checkinStore = useCheckinStore()
+const { snapshots: planSnapshots, summary: planExecutionSummary } = usePlanExecution()
 const showSetGoal = ref(false)
 const detailType = ref('checkin')
 
@@ -615,6 +683,152 @@ const isDayCompleted = (item) => {
 
 .set-goal-dialog :deep(.el-dialog__body) {
   padding-top: 10px;
+}
+
+.plan-execution-card {
+  margin-bottom: 20px;
+}
+
+.execution-summary-mini {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mini-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.mini-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.execution-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.execution-item {
+  padding: 14px;
+  background: #fafafa;
+  border-radius: 10px;
+  border-left: 3px solid #409eff;
+  transition: all 0.2s ease;
+}
+
+.execution-item.exec-goal-met {
+  border-left-color: #67c23a;
+}
+
+.execution-item.exec-significantly-behind {
+  border-left-color: #f56c6c;
+}
+
+.exec-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.exec-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.exec-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.exec-metrics {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 10px;
+}
+
+.exec-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.exec-metric-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.exec-metric-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.exec-progress-track {
+  position: relative;
+  height: 8px;
+  background: #ebeef5;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.exec-progress-expected {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #d9ecff;
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.exec-progress-fill {
+  position: relative;
+  height: 100%;
+  border-radius: 4px;
+  z-index: 2;
+  transition: width 0.4s ease;
+}
+
+.exec-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.exec-rate {
+  color: #606266;
+  font-weight: 500;
+}
+
+.exec-deviation {
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .execution-summary-mini {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .exec-metrics {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 @media (max-width: 768px) {

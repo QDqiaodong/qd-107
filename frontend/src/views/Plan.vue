@@ -10,9 +10,32 @@
 
     <WeeklyScheduleBoard :daily-target="60" />
 
+    <div class="execution-summary" v-if="executionSummary.total > 0">
+      <div class="summary-item summary-total">
+        <span class="summary-num">{{ executionSummary.total }}</span>
+        <span class="summary-label">进行中计划</span>
+      </div>
+      <div class="summary-item summary-goal-met">
+        <span class="summary-num">{{ executionSummary.goalMet }}</span>
+        <span class="summary-label">已达标</span>
+      </div>
+      <div class="summary-item summary-in-progress">
+        <span class="summary-num">{{ executionSummary.inProgress }}</span>
+        <span class="summary-label">进行中</span>
+      </div>
+      <div class="summary-item summary-behind">
+        <span class="summary-num">{{ executionSummary.behind }}</span>
+        <span class="summary-label">明显落后</span>
+      </div>
+      <div class="summary-item summary-rate">
+        <span class="summary-num">{{ executionSummary.avgCompletionRate }}%</span>
+        <span class="summary-label">平均完成率</span>
+      </div>
+    </div>
+
     <div class="plan-tabs">
       <el-tabs v-model="activeTab" class="plan-tabs-content">
-        <el-tab-pane label="进行中" name="active">
+        <el-tab-pane label="全部" name="all">
           <div v-if="activePlans.length === 0" class="card empty-state">
             <el-icon><Document /></el-icon>
             <p>暂无进行中的计划</p>
@@ -20,64 +43,87 @@
               创建第一个计划
             </el-button>
           </div>
-          
-          <div v-for="plan in activePlans" :key="plan.id" class="card plan-card">
-            <div class="plan-header">
-              <div class="plan-type" :style="{ background: getSportTypeInfo(plan.type).color + '20' }">
-                <el-icon :size="20" :color="getSportTypeInfo(plan.type).color">
-                  <component :is="getSportTypeIcon(plan.type)" />
-                </el-icon>
-              </div>
-              <div class="plan-info">
-                <div class="plan-title">{{ plan.title }}</div>
-                <div class="plan-meta">
-                  <el-tag size="small" :type="getTagType(plan.type)">
-                    {{ plan.typeName }}
-                  </el-tag>
-                  <span class="plan-frequency">
-                    <el-icon><Clock /></el-icon>
-                    {{ plan.frequency }}
-                  </span>
-                </div>
-              </div>
-              <div class="plan-actions">
-                <el-button type="success" text @click="handleToggle(plan.id)">
-                  <el-icon><Check /></el-icon>
-                  完成
-                </el-button>
-                <el-button type="danger" text @click="handleDelete(plan.id)">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
-              </div>
-            </div>
-            <div class="remaining-capsules">
-              <span
-                class="capsule capsule-count"
-                :class="{ 'capsule-done': getWeeklyRemaining(plan).remainingCount === 0, 'capsule-urgent': getWeeklyRemaining(plan).remainingCount > 0 && getWeeklyRemaining(plan).remainingCount <= 1 }"
-              >
-                <el-icon v-if="getWeeklyRemaining(plan).remainingCount === 0"><CircleCheck /></el-icon>
-                {{ getWeeklyRemaining(plan).remainingCount === 0 ? '本周已完成' : '本周还差 ' + getWeeklyRemaining(plan).remainingCount + ' 练' }}
-              </span>
-              <span
-                class="capsule capsule-duration"
-                :class="{ 'capsule-done': getWeeklyRemaining(plan).remainingMinutes === 0, 'capsule-urgent': getWeeklyRemaining(plan).remainingMinutes > 0 && getWeeklyRemaining(plan).remainingMinutes <= 30 }"
-              >
-                <el-icon v-if="getWeeklyRemaining(plan).remainingMinutes === 0"><CircleCheck /></el-icon>
-                {{ getWeeklyRemaining(plan).remainingMinutes === 0 ? '时长已达标' : '还差 ' + getWeeklyRemaining(plan).remainingMinutes + ' 分钟' }}
-              </span>
-            </div>
-            <div class="plan-target">
-              <span class="target-label">目标：</span>{{ plan.target }}
-            </div>
-          </div>
+          <PlanSnapshotCard
+            v-for="plan in activePlans"
+            :key="plan.id"
+            :plan="plan"
+            :snapshot="getSnapshotForPlan(plan.id)"
+            @toggle="handleToggle"
+            @delete="handleDelete"
+          />
         </el-tab-pane>
-        
+
+        <el-tab-pane name="IN_PROGRESS">
+          <template #label>
+            <span class="tab-label-with-dot">
+              <span class="tab-dot" style="background: #409eff;"></span>
+              进行中
+              <el-badge v-if="byStatus.IN_PROGRESS.length" :value="byStatus.IN_PROGRESS.length" type="primary" :max="99" />
+            </span>
+          </template>
+          <div v-if="byStatus.IN_PROGRESS.length === 0" class="card empty-state">
+            <el-icon><Clock /></el-icon>
+            <p>没有进行中的计划</p>
+          </div>
+          <PlanSnapshotCard
+            v-for="plan in plansByStatus('IN_PROGRESS')"
+            :key="plan.id"
+            :plan="plan"
+            :snapshot="getSnapshotForPlan(plan.id)"
+            @toggle="handleToggle"
+            @delete="handleDelete"
+          />
+        </el-tab-pane>
+
+        <el-tab-pane name="GOAL_MET">
+          <template #label>
+            <span class="tab-label-with-dot">
+              <span class="tab-dot" style="background: #67c23a;"></span>
+              已达标
+              <el-badge v-if="byStatus.GOAL_MET.length" :value="byStatus.GOAL_MET.length" type="success" :max="99" />
+            </span>
+          </template>
+          <div v-if="byStatus.GOAL_MET.length === 0" class="card empty-state">
+            <el-icon><CircleCheck /></el-icon>
+            <p>暂无已达标计划</p>
+          </div>
+          <PlanSnapshotCard
+            v-for="plan in plansByStatus('GOAL_MET')"
+            :key="plan.id"
+            :plan="plan"
+            :snapshot="getSnapshotForPlan(plan.id)"
+            @toggle="handleToggle"
+            @delete="handleDelete"
+          />
+        </el-tab-pane>
+
+        <el-tab-pane name="SIGNIFICANTLY_BEHIND">
+          <template #label>
+            <span class="tab-label-with-dot">
+              <span class="tab-dot" style="background: #f56c6c;"></span>
+              明显落后
+              <el-badge v-if="byStatus.SIGNIFICANTLY_BEHIND.length" :value="byStatus.SIGNIFICANTLY_BEHIND.length" type="danger" :max="99" />
+            </span>
+          </template>
+          <div v-if="byStatus.SIGNIFICANTLY_BEHIND.length === 0" class="card empty-state">
+            <el-icon><SuccessFilled /></el-icon>
+            <p>没有明显落后的计划，继续保持！</p>
+          </div>
+          <PlanSnapshotCard
+            v-for="plan in plansByStatus('SIGNIFICANTLY_BEHIND')"
+            :key="plan.id"
+            :plan="plan"
+            :snapshot="getSnapshotForPlan(plan.id)"
+            @toggle="handleToggle"
+            @delete="handleDelete"
+          />
+        </el-tab-pane>
+
         <el-tab-pane label="已完成" name="completed">
           <div v-if="completedPlans.length === 0" class="card empty-state">
             <el-icon><CircleCheck /></el-icon>
             <p>暂无已完成的计划</p>
           </div>
-          
           <div v-for="plan in completedPlans" :key="plan.id" class="card plan-card completed">
             <div class="plan-header">
               <div class="plan-type" style="background: #e1f3d8;">
@@ -170,11 +216,15 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
-import { sportTypes, getSportTypeInfo } from '@/utils/common'
+import { sportTypes } from '@/utils/common'
+import { usePlanExecution } from '@/composables/usePlanExecution'
 import WeeklyScheduleBoard from '@/components/WeeklyScheduleBoard.vue'
+import PlanSnapshotCard from '@/components/PlanSnapshotCard.vue'
 
 const checkinStore = useCheckinStore()
-const activeTab = ref('active')
+const { byStatus, summary: executionSummary, getSnapshotForPlan } = usePlanExecution()
+
+const activeTab = ref('all')
 const showDialog = ref(false)
 const planFormRef = ref()
 
@@ -191,32 +241,9 @@ const planForm = ref({
 const activePlans = computed(() => checkinStore.plans.filter(p => !p.completed))
 const completedPlans = computed(() => checkinStore.plans.filter(p => p.completed))
 
-const getWeeklyRemaining = (plan) => {
-  return checkinStore.getWeeklyRemaining(plan)
-}
-
-const getSportTypeIcon = (type) => {
-  const iconMap = {
-    running: 'Running',
-    cycling: 'Bicycle',
-    swimming: 'Watermelon',
-    yoga: 'Moon',
-    gym: 'Sugar',
-    other: 'MoreFilled'
-  }
-  return iconMap[type] || 'MoreFilled'
-}
-
-const getTagType = (type) => {
-  const map = {
-    running: 'success',
-    cycling: 'primary',
-    swimming: 'danger',
-    yoga: 'warning',
-    gym: 'success',
-    other: 'info'
-  }
-  return map[type] || 'info'
+const plansByStatus = (status) => {
+  const planIds = byStatus.value[status].map(s => s.planId)
+  return activePlans.value.filter(p => planIds.includes(p.id))
 }
 
 const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
@@ -291,6 +318,55 @@ const handleDelete = (id) => {
   margin-bottom: 20px;
 }
 
+.execution-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.summary-num {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.summary-total .summary-num {
+  color: #303133;
+}
+
+.summary-goal-met .summary-num {
+  color: #67c23a;
+}
+
+.summary-in-progress .summary-num {
+  color: #409eff;
+}
+
+.summary-behind .summary-num {
+  color: #f56c6c;
+}
+
+.summary-rate .summary-num {
+  color: #e6a23c;
+}
+
 .plan-tabs {
   background: #fff;
   border-radius: 12px;
@@ -300,6 +376,19 @@ const handleDelete = (id) => {
 
 .plan-tabs-content {
   --el-tabs-header-height: 50px;
+}
+
+.tab-label-with-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .plan-card {
@@ -368,64 +457,6 @@ const handleDelete = (id) => {
   border-top: 1px solid #f0f0f0;
 }
 
-.remaining-capsules {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
-
-.capsule {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.6;
-  background: #f0f9eb;
-  color: #67c23a;
-  border: 1px solid #e1f3d8;
-}
-
-.capsule-duration {
-  background: #ecf5ff;
-  color: #409eff;
-  border-color: #d9ecff;
-}
-
-.capsule-done.capsule-count {
-  background: #f0f9eb;
-  color: #67c23a;
-  border-color: #e1f3d8;
-}
-
-.capsule-done.capsule-duration {
-  background: #f0f9eb;
-  color: #67c23a;
-  border-color: #e1f3d8;
-}
-
-.capsule-urgent.capsule-count {
-  background: #fef0f0;
-  color: #f56c6c;
-  border-color: #fde2e2;
-  animation: pulse-urgent 2s ease-in-out infinite;
-}
-
-.capsule-urgent.capsule-duration {
-  background: #fdf6ec;
-  color: #e6a23c;
-  border-color: #faecd8;
-  animation: pulse-urgent 2s ease-in-out infinite;
-}
-
-@keyframes pulse-urgent {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
 .target-label {
   color: #909399;
 }
@@ -442,11 +473,24 @@ const handleDelete = (id) => {
     align-items: flex-start;
     gap: 12px;
   }
-  
+
+  .execution-summary {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .summary-item {
+    padding: 12px 8px;
+  }
+
+  .summary-num {
+    font-size: 20px;
+  }
+
   .plan-header {
     flex-wrap: wrap;
   }
-  
+
   .plan-actions {
     width: 100%;
     justify-content: flex-end;

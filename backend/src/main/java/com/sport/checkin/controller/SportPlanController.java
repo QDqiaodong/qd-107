@@ -1,6 +1,7 @@
 package com.sport.checkin.controller;
 
 import com.sport.checkin.common.Result;
+import com.sport.checkin.dto.PlanExecutionSnapshotDTO;
 import com.sport.checkin.entity.SportPlan;
 import com.sport.checkin.service.SportPlanService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,6 +75,18 @@ public class SportPlanController {
             String reminderTime = params.get("reminderTime") != null ? params.get("reminderTime").toString() : null;
             sportPlanService.setReminder(id, enabled, reminderTime);
             return Result.success("设置成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/execution-snapshots")
+    public Result<List<PlanExecutionSnapshotDTO>> getExecutionSnapshots(
+            @RequestParam Long userId,
+            @RequestParam(required = false) String status) {
+        try {
+            List<PlanExecutionSnapshotDTO> snapshots = sportPlanService.getExecutionSnapshots(userId, status);
+            return Result.success(snapshots);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

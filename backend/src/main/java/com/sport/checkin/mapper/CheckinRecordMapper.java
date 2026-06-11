@@ -33,4 +33,22 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
     java.util.List<Map<String, Object>> countByIntensityAndDateRange(@Param("userId") Long userId,
                                                                       @Param("startDate") LocalDate startDate,
                                                                       @Param("endDate") LocalDate endDate);
+
+    @Select("SELECT COUNT(*) FROM checkin_record WHERE plan_id = #{planId} AND checkin_date BETWEEN #{startDate} AND #{endDate} AND deleted = 0")
+    Integer countByPlanIdAndDateRange(@Param("planId") Long planId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Select("SELECT COALESCE(SUM(duration), 0) FROM checkin_record WHERE plan_id = #{planId} AND checkin_date BETWEEN #{startDate} AND #{endDate} AND deleted = 0")
+    Integer sumDurationByPlanIdAndDateRange(@Param("planId") Long planId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Select("SELECT COALESCE(SUM(calorie), 0) FROM checkin_record WHERE plan_id = #{planId} AND checkin_date BETWEEN #{startDate} AND #{endDate} AND deleted = 0")
+    java.math.BigDecimal sumCalorieByPlanIdAndDateRange(@Param("planId") Long planId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Select("SELECT COUNT(*) FROM checkin_record WHERE sport_type_id = #{sportTypeId} AND user_id = #{userId} AND checkin_date BETWEEN #{startDate} AND #{endDate} AND deleted = 0")
+    Integer countBySportTypeAndDateRange(@Param("userId") Long userId, @Param("sportTypeId") Long sportTypeId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Select("SELECT COALESCE(SUM(duration), 0) FROM checkin_record WHERE sport_type_id = #{sportTypeId} AND user_id = #{userId} AND checkin_date BETWEEN #{startDate} AND #{endDate} AND deleted = 0")
+    Integer sumDurationBySportTypeAndDateRange(@Param("userId") Long userId, @Param("sportTypeId") Long sportTypeId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Select("SELECT COALESCE(SUM(calorie), 0) FROM checkin_record WHERE sport_type_id = #{sportTypeId} AND user_id = #{userId} AND checkin_date BETWEEN #{startDate} AND #{endDate} AND deleted = 0")
+    java.math.BigDecimal sumCalorieBySportTypeAndDateRange(@Param("userId") Long userId, @Param("sportTypeId") Long sportTypeId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 }
