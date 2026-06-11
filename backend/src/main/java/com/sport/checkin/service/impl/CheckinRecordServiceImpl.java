@@ -3,6 +3,8 @@ package com.sport.checkin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sport.checkin.common.IntensityClassifier;
+import com.sport.checkin.common.IntensityLevel;
 import com.sport.checkin.common.RedisLock;
 import com.sport.checkin.common.SimilarityUtils;
 import com.sport.checkin.dto.CheckinResultDTO;
@@ -79,12 +81,16 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
     public CheckinResultDTO addCheckin(CheckinRecord record) {
         record.setCheckinDate(LocalDate.now());
         record.setCheckinTime(LocalDateTime.now());
-        if (record.getCalorie() == null && record.getSportTypeId() != null) {
-            SportType sportType = sportTypeService.getById(record.getSportTypeId());
-            if (sportType != null && sportType.getCaloriePerMinute() != null) {
-                record.setCalorie(sportType.getCaloriePerMinute().multiply(new BigDecimal(record.getDuration())));
-            }
+
+        SportType sportType = record.getSportTypeId() != null
+                ? sportTypeService.getById(record.getSportTypeId()) : null;
+
+        if (record.getCalorie() == null && sportType != null && sportType.getCaloriePerMinute() != null) {
+            record.setCalorie(sportType.getCaloriePerMinute().multiply(new BigDecimal(record.getDuration())));
         }
+
+        IntensityLevel level = IntensityClassifier.classify(record, sportType);
+        record.setIntensity(level.name());
 
         String lockKey = buildLockKey(record);
         boolean locked = tryLockWithRetry(lockKey);
@@ -101,6 +107,7 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
             CheckinRecord similarRecord = findSimilarRecord(record);
             if (similarRecord != null) {
                 CheckinRecord mergedRecord = mergeRecords(similarRecord, record);
+                mergedRecord.setIntensity(IntensityClassifier.classify(mergedRecord, sportType).name());
                 updateById(mergedRecord);
                 sportTypeService.incrementHotCount(record.getSportTypeId());
                 log.info("打卡合并成功，userId:{}, sportTypeId:{}, 原记录id:{}", record.getUserId(), record.getSportTypeId(), similarRecord.getId());

@@ -8,4 +8,5 @@ public interface StatisticsService {
 
     Map<String, Object> getMonthStatistics(Long userId);
 
+    Map<String, Object> getIntensityDistribution(Long userId, String period);
 }

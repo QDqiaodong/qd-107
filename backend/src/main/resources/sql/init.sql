@@ -64,6 +64,7 @@ CREATE TABLE checkin_record (
     duration INT NOT NULL COMMENT '运动时长(分钟)',
     calorie DECIMAL(10,2) COMMENT '消耗卡路里',
     distance DECIMAL(10,2) COMMENT '距离(公里)',
+    intensity VARCHAR(20) DEFAULT 'MODERATE' COMMENT '训练强度：LIGHT轻量 MODERATE中等 HIGH高强度',
     remark VARCHAR(500) COMMENT '打卡备注',
     muscle_tags VARCHAR(255) COMMENT '肌感标签，多个逗号分隔',
     images VARCHAR(1000) COMMENT '打卡图片，多个逗号分隔',

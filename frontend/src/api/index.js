@@ -64,7 +64,8 @@ export const dynamicApi = {
 
 export const statsApi = {
   getWeekly: (userId) => request.get('/statistics/week', { params: { userId } }),
-  getMonthly: (userId) => request.get('/statistics/month', { params: { userId } })
+  getMonthly: (userId) => request.get('/statistics/month', { params: { userId } }),
+  getIntensity: (userId, period) => request.get('/statistics/intensity', { params: { userId, period } })
 }
 
 export default request

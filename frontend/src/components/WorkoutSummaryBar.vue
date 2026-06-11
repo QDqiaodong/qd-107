@@ -81,8 +81,8 @@ const distancePercent = computed(() => {
   return Math.min((num * unit) / DISTANCE_KM_MAX * 100, 100)
 })
 
-const barPercentMap = { light: 25, moderate: 50, long: 75, highBurn: 100 }
-const barColorMap = { light: '#67c23a', moderate: '#e6a23c', long: '#409eff', highBurn: '#f56c6c' }
+const barPercentMap = { LIGHT: 20, MODERATE: 55, HIGH: 90 }
+const barColorMap = { LIGHT: '#67c23a', MODERATE: '#e6a23c', HIGH: '#f56c6c' }
 
 const barFillStyle = computed(() => ({
   width: barPercentMap[intensityKey.value] + '%',

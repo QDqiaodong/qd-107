@@ -24,6 +24,8 @@ public class CheckinRecord {
 
     private java.math.BigDecimal distance;
 
+    private String intensity;
+
     private String remark;
 
     private String muscleTags;

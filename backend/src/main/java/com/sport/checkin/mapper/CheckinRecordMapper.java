@@ -26,4 +26,11 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
             "WHERE checkin_time >= #{startTime} AND deleted = 0 " +
             "GROUP BY sport_type_id")
     java.util.List<Map<String, Object>> countCheckinBySportTypeSince(@Param("startTime") LocalDateTime startTime);
+
+    @Select("SELECT intensity, COUNT(*) as count FROM checkin_record " +
+            "WHERE user_id = #{userId} AND checkin_date BETWEEN #{startDate} AND #{endDate} AND deleted = 0 " +
+            "GROUP BY intensity")
+    java.util.List<Map<String, Object>> countByIntensityAndDateRange(@Param("userId") Long userId,
+                                                                      @Param("startDate") LocalDate startDate,
+                                                                      @Param("endDate") LocalDate endDate);
 }

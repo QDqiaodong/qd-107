@@ -37,4 +37,16 @@ public class StatisticsController {
         }
     }
 
+    @GetMapping("/intensity")
+    public Result<Map<String, Object>> getIntensityDistribution(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "week") String period) {
+        try {
+            Map<String, Object> data = statisticsService.getIntensityDistribution(userId, period);
+            return Result.success(data);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
 }
