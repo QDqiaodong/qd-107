@@ -38,6 +38,91 @@
     </div>
 
     <div class="card">
+      <h3 class="section-title">最佳记录</h3>
+      <div class="best-records-grid">
+        <div 
+          class="best-record-card record-duration"
+          @click="openRecordDetail('duration')"
+        >
+          <div class="record-icon">
+            <el-icon :size="28"><Timer /></el-icon>
+          </div>
+          <div class="record-content">
+            <div class="record-value">
+              <span class="record-num">{{ checkinStore.maxDurationRecord?.duration || 0 }}</span>
+              <span class="record-unit">分钟</span>
+            </div>
+            <div class="record-label">最长单次时长</div>
+            <div class="record-date" v-if="checkinStore.maxDurationRecord">
+              {{ formatRecordDate(checkinStore.maxDurationRecord.createTime) }}
+            </div>
+          </div>
+          <el-icon class="record-arrow" :size="16"><ArrowRight /></el-icon>
+        </div>
+
+        <div 
+          class="best-record-card record-calorie"
+          @click="openRecordDetail('calorie')"
+        >
+          <div class="record-icon">
+            <el-icon :size="28"><HotWater /></el-icon>
+          </div>
+          <div class="record-content">
+            <div class="record-value">
+              <span class="record-num">{{ maxCalorieValue }}</span>
+              <span class="record-unit">千卡</span>
+            </div>
+            <div class="record-label">最大单次热量</div>
+            <div class="record-date" v-if="checkinStore.maxCalorieRecord">
+              {{ formatRecordDate(checkinStore.maxCalorieRecord.createTime) }}
+            </div>
+          </div>
+          <el-icon class="record-arrow" :size="16"><ArrowRight /></el-icon>
+        </div>
+
+        <div 
+          class="best-record-card record-distance"
+          @click="openRecordDetail('distance')"
+        >
+          <div class="record-icon">
+            <el-icon :size="28"><Location /></el-icon>
+          </div>
+          <div class="record-content">
+            <div class="record-value">
+              <span class="record-num">{{ checkinStore.maxDistanceRecord?.amount || 0 }}</span>
+              <span class="record-unit">{{ checkinStore.maxDistanceRecord?.amountUnit || '公里' }}</span>
+            </div>
+            <div class="record-label">最远距离</div>
+            <div class="record-date" v-if="checkinStore.maxDistanceRecord">
+              {{ formatRecordDate(checkinStore.maxDistanceRecord.createTime) }}
+            </div>
+          </div>
+          <el-icon class="record-arrow" :size="16"><ArrowRight /></el-icon>
+        </div>
+
+        <div 
+          class="best-record-card record-streak"
+          @click="openRecordDetail('streak')"
+        >
+          <div class="record-icon">
+            <el-icon :size="28"><Medal /></el-icon>
+          </div>
+          <div class="record-content">
+            <div class="record-value">
+              <span class="record-num">{{ checkinStore.maxStreakDays.days }}</span>
+              <span class="record-unit">天</span>
+            </div>
+            <div class="record-label">最长连续打卡</div>
+            <div class="record-date" v-if="checkinStore.maxStreakDays.days > 0">
+              共 {{ checkinStore.maxStreakDays.records.length }} 次训练
+            </div>
+          </div>
+          <el-icon class="record-arrow" :size="16"><ArrowRight /></el-icon>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="chart-header">
         <h3 class="section-title" style="margin-bottom: 0;">数据统计</h3>
         <el-radio-group v-model="statsType" size="small">
@@ -128,7 +213,7 @@
 
       <div v-if="selectedRecords.length === 2" class="compare-detail">
         <div class="compare-divider">
-          <el-icon :size="24" color="#409eff"><ArrowLeftRight /></el-icon>
+          <el-icon :size="24" color="#409eff"><Sort /></el-icon>
         </div>
         
         <div class="compare-columns">
@@ -241,6 +326,118 @@
         <el-button type="primary" @click="saveProfile">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="showRecordDetail" :title="detailTitle" width="600px" class="record-detail-dialog">
+      <div v-if="detailType === 'streak'" class="streak-detail">
+        <div class="streak-summary">
+          <div class="streak-badge">
+            <el-icon :size="32" color="#f59e0b"><Medal /></el-icon>
+          </div>
+          <div class="streak-info">
+            <div class="streak-days">{{ checkinStore.maxStreakDays.days }} 天</div>
+            <div class="streak-label">连续打卡</div>
+            <div class="streak-range">
+              {{ formatStreakStart(checkinStore.maxStreakDays) }} - {{ formatStreakEnd(checkinStore.maxStreakDays) }}
+            </div>
+          </div>
+        </div>
+        <div class="streak-timeline">
+          <div 
+            v-for="record in checkinStore.maxStreakDays.records" 
+            :key="record.id" 
+            class="timeline-item"
+          >
+            <div class="timeline-dot" :style="{ background: getSportTypeInfo(record.type).color }"></div>
+            <div class="timeline-content">
+              <div class="timeline-header">
+                <span class="timeline-type" :style="{ color: getSportTypeInfo(record.type).color }">
+                  {{ record.typeName }}
+                </span>
+                <span class="timeline-time">{{ formatRecordDate(record.createTime) }}</span>
+              </div>
+              <div class="timeline-stats">
+                <span>{{ record.duration }} 分钟</span>
+                <span>{{ record.amount }} {{ record.amountUnit }}</span>
+                <el-tag :type="getStatusType(record.status)" size="small">
+                  {{ record.statusText }}
+                </el-tag>
+              </div>
+              <div v-if="record.note" class="timeline-note">{{ record.note }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="currentDetailRecord" class="single-record-detail">
+        <div class="detail-header">
+          <div class="detail-type-icon" :style="{ background: getSportTypeInfo(currentDetailRecord.type).color + '20' }">
+            <el-icon :size="28" :color="getSportTypeInfo(currentDetailRecord.type).color">
+              <component :is="getSportTypeIcon(currentDetailRecord.type)" />
+            </el-icon>
+          </div>
+          <div class="detail-type-info">
+            <div class="detail-type-name">{{ currentDetailRecord.typeName }}</div>
+            <div class="detail-time">{{ formatRecordDate(currentDetailRecord.createTime) }}</div>
+          </div>
+        </div>
+
+        <div class="detail-stats">
+          <div class="detail-stat">
+            <div class="detail-stat-value">{{ currentDetailRecord.duration }}</div>
+            <div class="detail-stat-label">运动时长(分钟)</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-value">{{ currentDetailRecord.amount }}</div>
+            <div class="detail-stat-label">运动量({{ currentDetailRecord.amountUnit }})</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-value">{{ calculateCalorie(currentDetailRecord) }}</div>
+            <div class="detail-stat-label">消耗热量(千卡)</div>
+          </div>
+        </div>
+
+        <div class="detail-status">
+          <span class="detail-status-label">身体状态：</span>
+          <el-tag :type="getStatusType(currentDetailRecord.status)" size="large">
+            {{ currentDetailRecord.statusText }}
+          </el-tag>
+        </div>
+
+        <div v-if="currentDetailRecord.muscleTags && currentDetailRecord.muscleTags.length > 0" class="detail-muscle-tags">
+          <span class="detail-tags-label">肌感体验：</span>
+          <el-tag
+            v-for="tag in getMuscleTagInfos(currentDetailRecord.muscleTags)"
+            :key="tag.value"
+            size="small"
+            effect="light"
+            class="detail-tag-item"
+            :style="{ borderColor: tag.color, color: tag.color, backgroundColor: tag.color + '10' }"
+          >
+            {{ tag.emoji }} {{ tag.label }}
+          </el-tag>
+        </div>
+
+        <div v-if="currentDetailRecord.note" class="detail-note">
+          <div class="detail-note-label">备注</div>
+          <div class="detail-note-content">{{ currentDetailRecord.note }}</div>
+        </div>
+
+        <div v-if="currentDetailRecord.images && currentDetailRecord.images.length > 0" class="detail-images">
+          <div class="detail-images-label">训练照片</div>
+          <div class="detail-images-grid">
+            <el-image
+              v-for="(img, idx) in currentDetailRecord.images"
+              :key="idx"
+              :src="img"
+              :preview-src-list="currentDetailRecord.images"
+              :initial-index="idx"
+              fit="cover"
+              class="detail-image"
+            />
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -257,8 +454,21 @@ import {
 } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { ElMessage } from 'element-plus'
+import {
+  Timer,
+  HotWater,
+  Location,
+  Medal,
+  ArrowRight,
+  User,
+  Edit,
+  Picture,
+  Camera,
+  CircleCheck,
+  Sort
+} from '@element-plus/icons-vue'
 import { useCheckinStore } from '@/stores/checkin'
-import { sportTypes } from '@/utils/common'
+import { sportTypes, getSportTypeInfo, muscleTags, formatDate } from '@/utils/common'
 import CalendarHeatmap from '@/components/CalendarHeatmap.vue'
 
 use([
@@ -277,12 +487,31 @@ const statsType = ref('week')
 const showEdit = ref(false)
 const compareSportType = ref('running')
 const selectedRecords = ref([])
+const showRecordDetail = ref(false)
+const detailType = ref('')
+const currentDetailRecord = ref(null)
 
 const editForm = ref({
   nickname: '',
   height: 0,
   weight: 0,
   target: ''
+})
+
+const maxCalorieValue = computed(() => {
+  const record = checkinStore.maxCalorieRecord
+  if (!record) return 0
+  return Math.round((record.duration || 0) * (record.amount || 0) * 0.1)
+})
+
+const detailTitle = computed(() => {
+  const titles = {
+    duration: '最长单次时长记录',
+    calorie: '最大单次热量记录',
+    distance: '最远距离记录',
+    streak: '最长连续打卡记录'
+  }
+  return titles[detailType.value] || '记录详情'
 })
 
 const compareSportTypes = computed(() => {
@@ -301,6 +530,70 @@ const formatShortDate = (dateStr) => {
   const hours = String(date.getHours()).padStart(2, '0')
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${month}月${day}日 ${hours}:${minutes}`
+}
+
+const formatRecordDate = (dateStr) => {
+  return formatDate(dateStr, 'YYYY-MM-DD HH:mm')
+}
+
+const openRecordDetail = (type) => {
+  detailType.value = type
+  if (type === 'duration') {
+    currentDetailRecord.value = checkinStore.maxDurationRecord
+  } else if (type === 'calorie') {
+    currentDetailRecord.value = checkinStore.maxCalorieRecord
+  } else if (type === 'distance') {
+    currentDetailRecord.value = checkinStore.maxDistanceRecord
+  } else {
+    currentDetailRecord.value = null
+  }
+  if (type === 'streak' || currentDetailRecord.value) {
+    showRecordDetail.value = true
+  }
+}
+
+const getSportTypeIcon = (type) => {
+  const iconMap = {
+    running: 'Running',
+    cycling: 'Bicycle',
+    swimming: 'Watermelon',
+    yoga: 'Moon',
+    gym: 'Sugar',
+    other: 'MoreFilled'
+  }
+  return iconMap[type] || 'MoreFilled'
+}
+
+const getStatusType = (status) => {
+  const map = {
+    excellent: 'success',
+    good: 'success',
+    normal: 'warning',
+    tired: 'danger'
+  }
+  return map[status] || 'info'
+}
+
+const getMuscleTagInfos = (tagValues) => {
+  if (!tagValues || tagValues.length === 0) return []
+  return tagValues.map(v => muscleTags.find(t => t.value === v)).filter(Boolean)
+}
+
+const calculateCalorie = (record) => {
+  if (!record) return 0
+  return Math.round((record.duration || 0) * (record.amount || 0) * 0.1)
+}
+
+const formatStreakStart = (streakData) => {
+  if (!streakData || !streakData.endDate || streakData.days === 0) return '-'
+  const endDate = new Date(streakData.endDate)
+  endDate.setDate(endDate.getDate() - (streakData.days - 1))
+  return formatDate(endDate.toISOString(), 'YYYY-MM-DD')
+}
+
+const formatStreakEnd = (streakData) => {
+  if (!streakData || !streakData.endDate) return '-'
+  return formatDate(new Date(streakData.endDate).toISOString(), 'YYYY-MM-DD')
 }
 
 const isSelected = (id) => {
@@ -874,7 +1167,432 @@ const pieOption = computed(() => {
   color: #909399;
 }
 
+.best-records-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.best-record-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.best-record-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.08;
+  z-index: 0;
+}
+
+.best-record-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.best-record-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.best-record-card:hover .record-arrow {
+  transform: translateX(4px);
+}
+
+.record-duration {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.record-duration::before {
+  background: #fff;
+}
+
+.record-calorie {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: #fff;
+}
+
+.record-calorie::before {
+  background: #fff;
+}
+
+.record-distance {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: #fff;
+}
+
+.record-distance::before {
+  background: #fff;
+}
+
+.record-streak {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  color: #fff;
+}
+
+.record-streak::before {
+  background: #fff;
+}
+
+.record-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.record-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.record-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+.record-num {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.record-unit {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.record-label {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+.record-date {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.record-arrow {
+  flex-shrink: 0;
+  opacity: 0.8;
+  transition: transform 0.3s ease;
+}
+
+.record-detail-dialog :deep(.el-dialog__body) {
+  padding-top: 10px;
+}
+
+.single-record-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-type-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-type-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.detail-time {
+  font-size: 14px;
+  color: #909399;
+}
+
+.detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.detail-stat {
+  text-align: center;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 10px;
+}
+
+.detail-stat-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #409eff;
+  line-height: 1.2;
+}
+
+.detail-stat-label {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.detail-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.detail-status-label {
+  color: #606266;
+}
+
+.detail-muscle-tags {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.detail-tags-label {
+  color: #606266;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.detail-tag-item {
+  border-width: 1px;
+}
+
+.detail-note {
+  background: #f5f7fa;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.detail-note-label {
+  font-size: 13px;
+  color: #909399;
+  margin-bottom: 8px;
+}
+
+.detail-note-content {
+  font-size: 14px;
+  color: #303133;
+  line-height: 1.6;
+}
+
+.detail-images-label {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 12px;
+}
+
+.detail-images-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.detail-image {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.streak-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.streak-summary {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 14px;
+}
+
+.streak-badge {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.streak-days {
+  font-size: 36px;
+  font-weight: bold;
+  color: #92400e;
+  line-height: 1.1;
+}
+
+.streak-label {
+  font-size: 15px;
+  color: #b45309;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.streak-range {
+  font-size: 13px;
+  color: #92400e;
+  margin-top: 6px;
+  opacity: 0.8;
+}
+
+.streak-timeline {
+  position: relative;
+  padding-left: 28px;
+}
+
+.streak-timeline::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: #e4e7ed;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -23px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #e4e7ed;
+}
+
+.timeline-content {
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.timeline-type {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.timeline-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.timeline-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #606266;
+  margin-bottom: 6px;
+}
+
+.timeline-note {
+  font-size: 13px;
+  color: #909399;
+  line-height: 1.5;
+}
+
 @media (max-width: 768px) {
+  .best-records-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .best-record-card {
+    padding: 16px;
+  }
+
+  .record-num {
+    font-size: 22px;
+  }
+
+  .detail-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .detail-stat {
+    padding: 12px 8px;
+  }
+
+  .detail-stat-value {
+    font-size: 20px;
+  }
+
+  .detail-images-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .streak-summary {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .streak-badge {
+    width: 56px;
+    height: 56px;
+  }
+
+  .streak-days {
+    font-size: 28px;
+  }
   .user-card {
     flex-direction: column;
     text-align: center;

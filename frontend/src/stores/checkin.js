@@ -68,6 +68,78 @@ export const useCheckinStore = defineStore('checkin', {
         const dayDuration = dayPlans.reduce((sum, p) => sum + (p.duration || 0), 0)
         return total + dayDuration
       }, 0)
+    },
+    maxDurationRecord: (state) => {
+      if (state.checkins.length === 0) return null
+      return state.checkins.reduce((max, curr) => 
+        (curr.duration || 0) > (max.duration || 0) ? curr : max
+      )
+    },
+    maxCalorieRecord: (state) => {
+      if (state.checkins.length === 0) return null
+      return state.checkins.reduce((max, curr) => {
+        const currCalorie = (curr.duration || 0) * (curr.amount || 0) * 0.1
+        const maxCalorie = (max.duration || 0) * (max.amount || 0) * 0.1
+        return currCalorie > maxCalorie ? curr : max
+      })
+    },
+    maxDistanceRecord: (state) => {
+      const distanceTypes = ['running', 'cycling', 'swimming']
+      const distanceRecords = state.checkins.filter(c => 
+        distanceTypes.includes(c.type) && c.amountUnit === '公里'
+      )
+      if (distanceRecords.length === 0) {
+        const meterRecords = state.checkins.filter(c => c.amountUnit === '米')
+        if (meterRecords.length === 0) return null
+        return meterRecords.reduce((max, curr) => (curr.amount || 0) > (max.amount || 0) ? curr : max)
+      }
+      return distanceRecords.reduce((max, curr) => (curr.amount || 0) > (max.amount || 0) ? curr : max)
+    },
+    maxStreakDays: (state) => {
+      if (state.checkins.length === 0) return { days: 0, records: [] }
+      const dateSet = new Set()
+      state.checkins.forEach(c => {
+        const date = new Date(c.createTime)
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        dateSet.add(dateStr)
+      })
+      const sortedDates = Array.from(dateSet).sort()
+      let maxStreak = 1
+      let currentStreak = 1
+      let streakEndDate = sortedDates[0]
+      let currentEndDate = sortedDates[0]
+      for (let i = 1; i < sortedDates.length; i++) {
+        const prev = new Date(sortedDates[i - 1])
+        const curr = new Date(sortedDates[i])
+        const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24))
+        if (diffDays === 1) {
+          currentStreak++
+          currentEndDate = sortedDates[i]
+          if (currentStreak > maxStreak) {
+            maxStreak = currentStreak
+            streakEndDate = currentEndDate
+          }
+        } else if (diffDays > 1) {
+          currentStreak = 1
+          currentEndDate = sortedDates[i]
+        }
+      }
+      const streakRecords = []
+      const endDate = new Date(streakEndDate)
+      for (let i = maxStreak - 1; i >= 0; i--) {
+        const d = new Date(endDate)
+        d.setDate(d.getDate() - i)
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const dayRecords = state.checkins.filter(c => {
+          const cd = new Date(c.createTime)
+          const cStr = `${cd.getFullYear()}-${String(cd.getMonth() + 1).padStart(2, '0')}-${String(cd.getDate()).padStart(2, '0')}`
+          return cStr === dateStr
+        })
+        if (dayRecords.length > 0) {
+          streakRecords.push(...dayRecords)
+        }
+      }
+      return { days: maxStreak, records: streakRecords, endDate: streakEndDate }
     }
   },
   actions: {
