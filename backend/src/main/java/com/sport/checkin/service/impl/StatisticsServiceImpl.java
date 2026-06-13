@@ -165,6 +165,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     private List<SportPreferenceDTO.TimeSlot> buildPreferredTimeSlots(Long userId, Integer totalCount) {
         List<Map<String, Object>> rawList = checkinRecordMapper.countByHour(userId);
         Map<String, Integer> slotCountMap = new LinkedHashMap<>();
+        slotCountMap.put("深夜", 0);
         slotCountMap.put("清晨", 0);
         slotCountMap.put("上午", 0);
         slotCountMap.put("中午", 0);
@@ -173,6 +174,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         slotCountMap.put("夜间", 0);
 
         Map<String, String> slotRangeMap = new LinkedHashMap<>();
+        slotRangeMap.put("深夜", "23:00-05:00");
         slotRangeMap.put("清晨", "05:00-08:00");
         slotRangeMap.put("上午", "08:00-11:00");
         slotRangeMap.put("中午", "11:00-14:00");
@@ -216,6 +218,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (hour >= 14 && hour < 17) return "下午";
         if (hour >= 17 && hour < 20) return "傍晚";
         if (hour >= 20 && hour < 23) return "夜间";
+        if (hour >= 23 || hour < 5) return "深夜";
         return null;
     }
 
