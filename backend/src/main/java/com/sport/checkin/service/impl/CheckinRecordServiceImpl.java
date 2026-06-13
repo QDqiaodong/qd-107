@@ -274,20 +274,11 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
         return r1 + "；" + r2;
     }
 
-    private String mergeImages(String img1, String img2) {
-        if (!StringUtils.hasText(img1) && !StringUtils.hasText(img2)) {
-            return null;
+    private String mergeImages(String existingImg, String newImg) {
+        if (StringUtils.hasText(newImg)) {
+            return newImg;
         }
-        if (!StringUtils.hasText(img1)) {
-            return img2;
-        }
-        if (!StringUtils.hasText(img2)) {
-            return img1;
-        }
-        Set<String> imageSet = new HashSet<>();
-        imageSet.addAll(Arrays.asList(img1.split(",")));
-        imageSet.addAll(Arrays.asList(img2.split(",")));
-        return imageSet.stream().filter(StringUtils::hasText).collect(Collectors.joining(","));
+        return StringUtils.hasText(existingImg) ? existingImg : null;
     }
 
 }

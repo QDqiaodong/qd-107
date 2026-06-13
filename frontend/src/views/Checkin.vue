@@ -324,22 +324,32 @@ const selectStatus = (status) => {
   formData.statusText = status.label
 }
 
-const handleFileChange = (file) => {
-  if (file.raw) {
+const syncImagesFromFileList = () => {
+  formData.images = []
+  fileList.value.forEach(file => {
+    if (file.url) {
+      formData.images.push(file.url)
+    }
+  })
+}
+
+const handleFileChange = (file, files) => {
+  fileList.value = files
+  if (file.raw && !file.url) {
     const reader = new FileReader()
     reader.onload = (e) => {
-      formData.images.push(e.target.result)
+      file.url = e.target.result
+      syncImagesFromFileList()
     }
     reader.readAsDataURL(file.raw)
+  } else {
+    syncImagesFromFileList()
   }
 }
 
 const handleFileRemove = (file, files) => {
-  const index = fileList.value.indexOf(file)
-  if (index > -1) {
-    formData.images.splice(index, 1)
-  }
   fileList.value = files
+  syncImagesFromFileList()
 }
 
 const nextStep = () => {
