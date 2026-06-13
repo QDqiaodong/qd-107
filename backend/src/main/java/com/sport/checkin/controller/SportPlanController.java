@@ -1,6 +1,7 @@
 package com.sport.checkin.controller;
 
 import com.sport.checkin.common.Result;
+import com.sport.checkin.dto.PlanConflictDTO;
 import com.sport.checkin.dto.PlanExecutionSnapshotDTO;
 import com.sport.checkin.entity.SportPlan;
 import com.sport.checkin.service.SportPlanService;
@@ -87,6 +88,18 @@ public class SportPlanController {
         try {
             List<PlanExecutionSnapshotDTO> snapshots = sportPlanService.getExecutionSnapshots(userId, status);
             return Result.success(snapshots);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/check-conflicts")
+    public Result<List<PlanConflictDTO>> checkConflicts(
+            @RequestBody SportPlan plan,
+            @RequestParam(required = false) Long excludePlanId) {
+        try {
+            List<PlanConflictDTO> conflicts = sportPlanService.checkPlanConflicts(plan, excludePlanId);
+            return Result.success(conflicts);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

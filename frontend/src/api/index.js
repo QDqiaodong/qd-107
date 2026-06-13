@@ -50,7 +50,8 @@ export const planApi = {
   update: (data) => request.put('/plan', data),
   delete: (id) => request.delete(`/plan/${id}`),
   setReminder: (data) => request.post('/plan/reminder', data),
-  getExecutionSnapshots: (userId, status) => request.get('/plan/execution-snapshots', { params: { userId, status } })
+  getExecutionSnapshots: (userId, status) => request.get('/plan/execution-snapshots', { params: { userId, status } }),
+  checkConflicts: (data, excludePlanId) => request.post('/plan/check-conflicts', data, { params: excludePlanId ? { excludePlanId } : {} })
 }
 
 export const dynamicApi = {

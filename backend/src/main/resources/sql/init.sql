@@ -48,6 +48,8 @@ CREATE TABLE sport_plan (
     end_date DATE COMMENT '结束日期',
     reminder_time TIME COMMENT '提醒时间',
     reminder_enabled TINYINT DEFAULT 0 COMMENT '是否开启提醒：0否 1是',
+    weekdays VARCHAR(50) COMMENT '训练日（周几，逗号分隔：0周日1周一...6周六）',
+    training_time_slot VARCHAR(20) COMMENT '主要训练时段：MORNING早间 FORENOON上午 AFTERNOON下午 EVENING晚间 NIGHT夜间',
     status TINYINT DEFAULT 1 COMMENT '状态：0停用 1启用',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

@@ -33,6 +33,10 @@ public class SportPlan {
 
     private Integer reminderEnabled;
 
+    private String weekdays;
+
+    private String trainingTimeSlot;
+
     private Integer status;
 
     @TableField(fill = FieldFill.INSERT)

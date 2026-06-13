@@ -1,6 +1,7 @@
 package com.sport.checkin.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.sport.checkin.dto.PlanConflictDTO;
 import com.sport.checkin.dto.PlanExecutionSnapshotDTO;
 import com.sport.checkin.entity.SportPlan;
 
@@ -21,5 +22,7 @@ public interface SportPlanService extends IService<SportPlan> {
     boolean setReminder(Long id, Integer enabled, String reminderTime);
 
     List<PlanExecutionSnapshotDTO> getExecutionSnapshots(Long userId, String status);
+
+    List<PlanConflictDTO> checkPlanConflicts(SportPlan plan, Long excludePlanId);
 
 }
