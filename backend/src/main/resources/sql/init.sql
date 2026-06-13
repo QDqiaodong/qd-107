@@ -120,3 +120,7 @@ INSERT INTO sport_type (name, icon, description, calorie_per_minute, sort, hot_c
 ('羽毛球', 'badminton', '羽毛球运动', 6.50, 6, 560),
 ('篮球', 'basketball', '篮球运动', 9.00, 7, 780),
 ('徒步', 'hiking', '户外徒步登山', 5.50, 8, 450);
+
+INSERT INTO sys_user (id, username, password, nickname, avatar, height, weight) VALUES
+(1, 'default_user', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '运动达人', '', 170.00, 65.00)
+ON DUPLICATE KEY UPDATE id = id;

@@ -123,6 +123,18 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
         }
     }
 
+    @Override
+    public boolean deleteCheckin(Long id, Long userId) {
+        CheckinRecord record = getById(id);
+        if (record == null) {
+            throw new RuntimeException("打卡记录不存在");
+        }
+        if (!record.getUserId().equals(userId)) {
+            throw new RuntimeException("无权限删除该记录");
+        }
+        return removeById(id);
+    }
+
     private boolean tryLockWithRetry(String lockKey) {
         for (int i = 0; i < LOCK_RETRY_TIMES; i++) {
             boolean locked = redisLock.tryLock(lockKey, LOCK_EXPIRE_SECONDS, TimeUnit.SECONDS);

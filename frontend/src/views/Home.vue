@@ -400,8 +400,17 @@ const goGoal = () => {
   router.push('/goal')
 }
 
+const loadBackendCheckins = async () => {
+  try {
+    await checkinStore.fetchCheckins()
+  } catch (e) {
+    console.warn('从后端加载打卡数据失败，使用本地缓存', e)
+  }
+}
+
 onMounted(() => {
   loadHotTypes()
+  loadBackendCheckins()
 })
 
 const fetchCheckins = (page, pageSize) => {
@@ -566,8 +575,8 @@ const handleDelete = (id) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    checkinStore.deleteCheckin(id)
+  }).then(async () => {
+    await checkinStore.deleteCheckin(id)
     refresh()
     ElMessage.success('删除成功')
   }).catch(() => {})

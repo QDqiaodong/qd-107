@@ -379,9 +379,9 @@ const buildSummaryNote = () => {
   return tagText
 }
 
-const submitCheckin = () => {
+const submitCheckin = async () => {
   const summaryNote = buildSummaryNote()
-  checkinStore.addCheckin({
+  const result = await checkinStore.addCheckin({
     type: formData.type,
     typeName: formData.typeName,
     duration: formData.duration,
@@ -393,8 +393,14 @@ const submitCheckin = () => {
     muscleTags: [...selectedTags.value],
     images: [...formData.images]
   })
-  
-  ElMessage.success('打卡成功！继续保持哦 💪')
+
+  if (result.mergeTip && !result.offline) {
+    ElMessage.success(result.mergeTip)
+  } else if (result.offline) {
+    ElMessage.warning('打卡已保存到本地，网络恢复后会自动同步')
+  } else {
+    ElMessage.success('打卡成功！继续保持哦 💪')
+  }
   
   setTimeout(() => {
     router.push('/')

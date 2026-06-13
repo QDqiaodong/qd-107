@@ -14,4 +14,6 @@ public interface CheckinRecordService extends IService<CheckinRecord> {
 
     CheckinResultDTO addCheckin(CheckinRecord record);
 
+    boolean deleteCheckin(Long id, Long userId);
+
 }

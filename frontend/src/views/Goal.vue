@@ -279,7 +279,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Flag,
@@ -313,6 +313,18 @@ watch(showSetGoal, (val) => {
   if (val && checkinStore.currentMonthGoal) {
     goalForm.value = { ...checkinStore.currentMonthGoal }
   }
+})
+
+const loadBackendCheckins = async () => {
+  try {
+    await checkinStore.fetchCheckins()
+  } catch (e) {
+    console.warn('从后端加载打卡数据失败，使用本地缓存', e)
+  }
+}
+
+onMounted(() => {
+  loadBackendCheckins()
 })
 
 const saveGoal = () => {

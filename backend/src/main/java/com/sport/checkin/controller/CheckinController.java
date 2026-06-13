@@ -49,4 +49,16 @@ public class CheckinController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public Result<Boolean> deleteCheckin(
+            @PathVariable Long id,
+            @RequestParam Long userId) {
+        try {
+            boolean deleted = checkinRecordService.deleteCheckin(id, userId);
+            return Result.success(deleted ? "删除成功" : "删除失败", deleted);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
 }

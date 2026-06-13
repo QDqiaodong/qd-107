@@ -638,6 +638,18 @@ watch(showEdit, (val) => {
   }
 })
 
+const loadBackendCheckins = async () => {
+  try {
+    await checkinStore.fetchCheckins()
+  } catch (e) {
+    console.warn('从后端加载打卡数据失败，使用本地缓存', e)
+  }
+}
+
+onMounted(() => {
+  loadBackendCheckins()
+})
+
 const saveProfile = () => {
   checkinStore.updateUserInfo(editForm.value)
   ElMessage.success('保存成功')

@@ -40,7 +40,8 @@ export const sportTypeApi = {
 export const checkinApi = {
   getList: (userId, page, size) => request.get('/checkin/list', { params: { userId, page, size } }),
   getDetail: (id) => request.get(`/checkin/${id}`),
-  create: (data) => request.post('/checkin', data)
+  create: (data) => request.post('/checkin', data),
+  delete: (id, userId) => request.delete(`/checkin/${id}`, { params: { userId } })
 }
 
 export const planApi = {
