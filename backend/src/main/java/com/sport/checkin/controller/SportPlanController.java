@@ -1,6 +1,7 @@
 package com.sport.checkin.controller;
 
 import com.sport.checkin.common.Result;
+import com.sport.checkin.dto.PlanConflictCheckResultDTO;
 import com.sport.checkin.dto.PlanConflictDTO;
 import com.sport.checkin.dto.PlanExecutionSnapshotDTO;
 import com.sport.checkin.entity.SportPlan;
@@ -41,8 +42,11 @@ public class SportPlanController {
     @PostMapping
     public Result<SportPlan> addPlan(@RequestBody SportPlan plan) {
         try {
+            List<String> warnings = sportPlanService.validatePlanFields(plan, false);
             sportPlanService.addPlan(plan);
-            return Result.success("创建成功", plan);
+            Result<SportPlan> result = Result.success("创建成功", plan);
+            result.addWarnings(warnings);
+            return result;
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
@@ -51,8 +55,12 @@ public class SportPlanController {
     @PutMapping
     public Result<SportPlan> updatePlan(@RequestBody SportPlan plan) {
         try {
+            SportPlan mergedPlan = sportPlanService.mergePlanWithExisting(plan);
+            List<String> warnings = sportPlanService.validatePlanFields(mergedPlan, true);
             sportPlanService.updatePlan(plan);
-            return Result.success("更新成功", plan);
+            Result<SportPlan> result = Result.success("更新成功", mergedPlan);
+            result.addWarnings(warnings);
+            return result;
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
@@ -94,12 +102,14 @@ public class SportPlanController {
     }
 
     @PostMapping("/check-conflicts")
-    public Result<List<PlanConflictDTO>> checkConflicts(
+    public Result<PlanConflictCheckResultDTO> checkConflicts(
             @RequestBody SportPlan plan,
             @RequestParam(required = false) Long excludePlanId) {
         try {
-            List<PlanConflictDTO> conflicts = sportPlanService.checkPlanConflicts(plan, excludePlanId);
-            return Result.success(conflicts);
+            PlanConflictCheckResultDTO result = sportPlanService.checkPlanConflictsWithWarnings(plan, excludePlanId);
+            Result<PlanConflictCheckResultDTO> response = Result.success(result);
+            response.addWarnings(result.getWarnings());
+            return response;
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

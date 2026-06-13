@@ -2,14 +2,19 @@ package com.sport.checkin.common;
 
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 public class Result<T> {
 
     private Integer code;
     private String message;
     private T data;
+    private List<String> warnings;
 
     private Result() {
+        this.warnings = new ArrayList<>();
     }
 
     public static <T> Result<T> success() {
@@ -47,6 +52,24 @@ public class Result<T> {
         result.setCode(code);
         result.setMessage(message);
         return result;
+    }
+
+    public Result<T> addWarning(String warning) {
+        if (this.warnings == null) {
+            this.warnings = new ArrayList<>();
+        }
+        this.warnings.add(warning);
+        return this;
+    }
+
+    public Result<T> addWarnings(List<String> warnings) {
+        if (this.warnings == null) {
+            this.warnings = new ArrayList<>();
+        }
+        if (warnings != null && !warnings.isEmpty()) {
+            this.warnings.addAll(warnings);
+        }
+        return this;
     }
 
 }

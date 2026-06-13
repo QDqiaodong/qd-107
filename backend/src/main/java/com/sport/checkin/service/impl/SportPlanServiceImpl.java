@@ -2,6 +2,7 @@ package com.sport.checkin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sport.checkin.dto.PlanConflictCheckResultDTO;
 import com.sport.checkin.dto.PlanConflictDTO;
 import com.sport.checkin.dto.PlanExecutionSnapshotDTO;
 import com.sport.checkin.entity.SportPlan;
@@ -10,6 +11,7 @@ import com.sport.checkin.mapper.CheckinRecordMapper;
 import com.sport.checkin.mapper.SportPlanMapper;
 import com.sport.checkin.mapper.SportTypeMapper;
 import com.sport.checkin.service.SportPlanService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -50,9 +52,9 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
     public boolean addPlan(SportPlan plan) {
         plan.setStatus(1);
 
-        List<PlanConflictDTO> conflicts = checkPlanConflicts(plan, null);
-        if (!conflicts.isEmpty()) {
-            throw new RuntimeException(buildConflictMessage(conflicts));
+        PlanConflictCheckResultDTO checkResult = checkPlanConflictsWithWarnings(plan, null);
+        if (checkResult.hasConflicts()) {
+            throw new RuntimeException(buildConflictMessage(checkResult.getConflicts()));
         }
 
         return save(plan);
@@ -60,12 +62,18 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
 
     @Override
     public boolean updatePlan(SportPlan plan) {
-        List<PlanConflictDTO> conflicts = checkPlanConflicts(plan, plan.getId());
-        if (!conflicts.isEmpty()) {
-            throw new RuntimeException(buildConflictMessage(conflicts));
+        if (plan.getId() == null) {
+            throw new RuntimeException("计划ID不能为空");
         }
 
-        return updateById(plan);
+        SportPlan mergedPlan = mergePlanWithExisting(plan);
+
+        PlanConflictCheckResultDTO checkResult = checkPlanConflictsWithWarnings(mergedPlan, plan.getId());
+        if (checkResult.hasConflicts()) {
+            throw new RuntimeException(buildConflictMessage(checkResult.getConflicts()));
+        }
+
+        return updateById(mergedPlan);
     }
 
     @Override
@@ -248,27 +256,50 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
     }
 
     private void checkDateRangeConflict(SportPlan newPlan, SportPlan existing, List<PlanConflictDTO> conflicts) {
-        if (newPlan.getStartDate() == null || newPlan.getEndDate() == null
-                || existing.getStartDate() == null || existing.getEndDate() == null) {
+        LocalDate newStart = newPlan.getStartDate();
+        LocalDate newEnd = newPlan.getEndDate();
+        LocalDate existingStart = existing.getStartDate();
+        LocalDate existingEnd = existing.getEndDate();
+
+        if (newStart == null && newEnd == null && existingStart == null && existingEnd == null) {
+            Set<Integer> newWeekdays = parseWeekdaysForConflict(newPlan.getWeekdays());
+            Set<Integer> existingWeekdays = parseWeekdaysForConflict(existing.getWeekdays());
+            newWeekdays.retainAll(existingWeekdays);
+
+            if (!newWeekdays.isEmpty()) {
+                PlanConflictDTO dto = new PlanConflictDTO();
+                dto.setConflictType("DATE_RANGE_OVERLAP");
+                dto.setConflictDescription("执行日期与训练日存在重叠");
+                dto.setConflictingPlanId(existing.getId());
+                dto.setConflictingPlanTitle(existing.getTitle());
+                dto.setConflictDetail(String.format("双方均未设置执行日期，共同训练日：%s",
+                        formatWeekdays(newWeekdays)));
+                conflicts.add(dto);
+            }
             return;
         }
 
-        boolean dateOverlap = !newPlan.getStartDate().isAfter(existing.getEndDate())
-                && !newPlan.getEndDate().isBefore(existing.getStartDate());
+        LocalDate effectiveNewStart = newStart != null ? newStart : LocalDate.now();
+        LocalDate effectiveNewEnd = newEnd != null ? newEnd : LocalDate.now().plusYears(1);
+        LocalDate effectiveExistingStart = existingStart != null ? existingStart : LocalDate.now();
+        LocalDate effectiveExistingEnd = existingEnd != null ? existingEnd : LocalDate.now().plusYears(1);
+
+        boolean dateOverlap = !effectiveNewStart.isAfter(effectiveExistingEnd)
+                && !effectiveNewEnd.isBefore(effectiveExistingStart);
 
         if (!dateOverlap) {
             return;
         }
 
-        Set<Integer> newWeekdays = parseWeekdays(newPlan.getWeekdays());
-        Set<Integer> existingWeekdays = parseWeekdays(existing.getWeekdays());
+        Set<Integer> newWeekdays = parseWeekdaysForConflict(newPlan.getWeekdays());
+        Set<Integer> existingWeekdays = parseWeekdaysForConflict(existing.getWeekdays());
         newWeekdays.retainAll(existingWeekdays);
 
         if (!newWeekdays.isEmpty()) {
-            LocalDate overlapStart = newPlan.getStartDate().isAfter(existing.getStartDate())
-                    ? newPlan.getStartDate() : existing.getStartDate();
-            LocalDate overlapEnd = newPlan.getEndDate().isBefore(existing.getEndDate())
-                    ? newPlan.getEndDate() : existing.getEndDate();
+            LocalDate overlapStart = effectiveNewStart.isAfter(effectiveExistingStart)
+                    ? effectiveNewStart : effectiveExistingStart;
+            LocalDate overlapEnd = effectiveNewEnd.isBefore(effectiveExistingEnd)
+                    ? effectiveNewEnd : effectiveExistingEnd;
 
             PlanConflictDTO dto = new PlanConflictDTO();
             dto.setConflictType("DATE_RANGE_OVERLAP");
@@ -282,8 +313,8 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
     }
 
     private void checkWeekdayConflict(SportPlan newPlan, SportPlan existing, List<PlanConflictDTO> conflicts) {
-        Set<Integer> newWeekdays = parseWeekdays(newPlan.getWeekdays());
-        Set<Integer> existingWeekdays = parseWeekdays(existing.getWeekdays());
+        Set<Integer> newWeekdays = parseWeekdaysForConflict(newPlan.getWeekdays());
+        Set<Integer> existingWeekdays = parseWeekdaysForConflict(existing.getWeekdays());
         newWeekdays.retainAll(existingWeekdays);
 
         if (!newWeekdays.isEmpty()) {
@@ -315,8 +346,8 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
             return;
         }
 
-        Set<Integer> newWeekdays = parseWeekdays(newPlan.getWeekdays());
-        Set<Integer> existingWeekdays = parseWeekdays(existing.getWeekdays());
+        Set<Integer> newWeekdays = parseWeekdaysForConflict(newPlan.getWeekdays());
+        Set<Integer> existingWeekdays = parseWeekdaysForConflict(existing.getWeekdays());
         newWeekdays.retainAll(existingWeekdays);
         if (newWeekdays.isEmpty()) {
             return;
@@ -341,8 +372,8 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
             return;
         }
 
-        Set<Integer> newWeekdays = parseWeekdays(newPlan.getWeekdays());
-        Set<Integer> existingWeekdays = parseWeekdays(existing.getWeekdays());
+        Set<Integer> newWeekdays = parseWeekdaysForConflict(newPlan.getWeekdays());
+        Set<Integer> existingWeekdays = parseWeekdaysForConflict(existing.getWeekdays());
         newWeekdays.retainAll(existingWeekdays);
         if (newWeekdays.isEmpty()) {
             return;
@@ -385,8 +416,15 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
     }
 
     private Set<Integer> parseWeekdays(String weekdaysStr) {
+        return parseWeekdays(weekdaysStr, false);
+    }
+
+    private Set<Integer> parseWeekdays(String weekdaysStr, boolean treatEmptyAsAll) {
         Set<Integer> result = new HashSet<>();
         if (weekdaysStr == null || weekdaysStr.isEmpty()) {
+            if (treatEmptyAsAll) {
+                result.addAll(Arrays.asList(0, 1, 2, 3, 4, 5, 6));
+            }
             return result;
         }
         String[] parts = weekdaysStr.split("[,，]");
@@ -402,6 +440,10 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
         return result;
     }
 
+    private Set<Integer> parseWeekdaysForConflict(String weekdaysStr) {
+        return parseWeekdays(weekdaysStr, true);
+    }
+
     private String formatWeekdays(Set<Integer> weekdays) {
         String[] names = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
         List<Integer> sorted = new ArrayList<>(weekdays);
@@ -414,6 +456,150 @@ public class SportPlanServiceImpl extends ServiceImpl<SportPlanMapper, SportPlan
                 .filter(d -> d >= 0 && d <= 6)
                 .map(d -> names[d])
                 .collect(Collectors.joining("、"));
+    }
+
+    @Override
+    public PlanConflictCheckResultDTO checkPlanConflictsWithWarnings(SportPlan plan, Long excludePlanId) {
+        PlanConflictCheckResultDTO result = new PlanConflictCheckResultDTO();
+
+        List<String> warnings = validatePlanFields(plan, excludePlanId != null);
+        result.addAllWarnings(warnings);
+
+        List<PlanConflictDTO> conflicts = checkPlanConflicts(plan, excludePlanId);
+        result.addAllConflicts(conflicts);
+
+        return result;
+    }
+
+    @Override
+    public SportPlan mergePlanWithExisting(SportPlan plan) {
+        if (plan.getId() == null) {
+            return plan;
+        }
+
+        SportPlan existing = getById(plan.getId());
+        if (existing == null) {
+            throw new RuntimeException("计划不存在");
+        }
+
+        SportPlan merged = new SportPlan();
+        BeanUtils.copyProperties(existing, merged);
+
+        if (plan.getTitle() != null) {
+            merged.setTitle(plan.getTitle());
+        }
+        if (plan.getDescription() != null) {
+            merged.setDescription(plan.getDescription());
+        }
+        if (plan.getSportTypeId() != null) {
+            merged.setSportTypeId(plan.getSportTypeId());
+        }
+        if (plan.getTargetDuration() != null) {
+            merged.setTargetDuration(plan.getTargetDuration());
+        }
+        if (plan.getTargetFrequency() != null) {
+            merged.setTargetFrequency(plan.getTargetFrequency());
+        }
+        if (plan.getStartDate() != null) {
+            merged.setStartDate(plan.getStartDate());
+        }
+        if (plan.getEndDate() != null) {
+            merged.setEndDate(plan.getEndDate());
+        }
+        if (plan.getReminderTime() != null) {
+            merged.setReminderTime(plan.getReminderTime());
+        }
+        if (plan.getReminderEnabled() != null) {
+            merged.setReminderEnabled(plan.getReminderEnabled());
+        }
+        if (plan.getWeekdays() != null) {
+            merged.setWeekdays(plan.getWeekdays());
+        }
+        if (plan.getTrainingTimeSlot() != null) {
+            merged.setTrainingTimeSlot(plan.getTrainingTimeSlot());
+        }
+        if (plan.getStatus() != null) {
+            merged.setStatus(plan.getStatus());
+        }
+
+        return merged;
+    }
+
+    @Override
+    public List<String> validatePlanFields(SportPlan plan, boolean isUpdate) {
+        List<String> warnings = new ArrayList<>();
+
+        if (plan.getUserId() == null) {
+            warnings.add("用户ID为空，无法进行冲突检测");
+            return warnings;
+        }
+
+        if (plan.getWeekdays() == null || plan.getWeekdays().isEmpty()) {
+            warnings.add("风险提示：训练日(weekdays)未设置，系统将默认按每天执行来检测日期重叠和提醒时间冲突");
+        }
+
+        if (plan.getStartDate() == null) {
+            warnings.add("风险提示：开始日期(startDate)未设置，可能影响执行周期的准确性");
+        }
+
+        if (plan.getEndDate() == null) {
+            warnings.add("风险提示：结束日期(endDate)未设置，可能影响执行周期的准确性");
+        }
+
+        if (plan.getReminderEnabled() != null && plan.getReminderEnabled() == 1 && plan.getReminderTime() == null) {
+            warnings.add("风险提示：已开启提醒但未设置提醒时间(reminderTime)");
+        }
+
+        if (plan.getTrainingTimeSlot() == null || plan.getTrainingTimeSlot().isEmpty()) {
+            warnings.add("风险提示：训练时段(trainingTimeSlot)未设置，无法检测训练时段冲突");
+        }
+
+        if (plan.getSportTypeId() == null) {
+            warnings.add("风险提示：运动类型(sportTypeId)未设置");
+        }
+
+        if (plan.getTargetDuration() == null && plan.getTargetFrequency() == null) {
+            warnings.add("风险提示：目标时长(targetDuration)和目标频率(targetFrequency)均未设置");
+        }
+
+        if (isUpdate && plan.getId() != null) {
+            SportPlan existing = getById(plan.getId());
+            if (existing != null) {
+                boolean hasPartialUpdate = false;
+                List<String> updatedFields = new ArrayList<>();
+
+                if (plan.getTitle() != null && !Objects.equals(plan.getTitle(), existing.getTitle())) {
+                    updatedFields.add("计划名称");
+                    hasPartialUpdate = true;
+                }
+                if (plan.getWeekdays() != null && !Objects.equals(plan.getWeekdays(), existing.getWeekdays())) {
+                    updatedFields.add("训练日");
+                    hasPartialUpdate = true;
+                }
+                if (plan.getStartDate() != null && !Objects.equals(plan.getStartDate(), existing.getStartDate())) {
+                    updatedFields.add("开始日期");
+                    hasPartialUpdate = true;
+                }
+                if (plan.getEndDate() != null && !Objects.equals(plan.getEndDate(), existing.getEndDate())) {
+                    updatedFields.add("结束日期");
+                    hasPartialUpdate = true;
+                }
+                if (plan.getReminderTime() != null && !Objects.equals(plan.getReminderTime(), existing.getReminderTime())) {
+                    updatedFields.add("提醒时间");
+                    hasPartialUpdate = true;
+                }
+                if (plan.getTrainingTimeSlot() != null && !Objects.equals(plan.getTrainingTimeSlot(), existing.getTrainingTimeSlot())) {
+                    updatedFields.add("训练时段");
+                    hasPartialUpdate = true;
+                }
+
+                if (hasPartialUpdate) {
+                    warnings.add("提示：本次更新涉及字段 [" + String.join("、", updatedFields) + "]，系统已自动合并现有数据进行冲突检测");
+                }
+            }
+        }
+
+        return warnings;
     }
 
 }
