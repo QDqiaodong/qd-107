@@ -13,7 +13,7 @@ public interface SportDynamicService extends IService<SportDynamic> {
 
     List<SportDynamic> getMyList(Long userId, Integer page, Integer size);
 
-    SportDynamic getDetail(Long id);
+    SportDynamic getDetail(Long id, Long viewerId);
 
     boolean addDynamic(SportDynamic dynamic);
 

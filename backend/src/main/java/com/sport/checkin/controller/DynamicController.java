@@ -55,9 +55,11 @@ public class DynamicController {
     }
 
     @GetMapping("/{id}")
-    public Result<SportDynamic> getDetail(@PathVariable Long id) {
+    public Result<SportDynamic> getDetail(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long viewerId) {
         try {
-            SportDynamic dynamic = sportDynamicService.getDetail(id);
+            SportDynamic dynamic = sportDynamicService.getDetail(id, viewerId);
             return Result.success(dynamic);
         } catch (Exception e) {
             return Result.error(e.getMessage());

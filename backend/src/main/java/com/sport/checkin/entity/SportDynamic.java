@@ -27,6 +27,8 @@ public class SportDynamic {
 
     private Integer viewCount;
 
+    private Integer uniqueViewCount;
+
     private Integer isPublic;
 
     @TableField(fill = FieldFill.INSERT)

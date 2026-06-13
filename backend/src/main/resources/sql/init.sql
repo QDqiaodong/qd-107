@@ -91,6 +91,7 @@ CREATE TABLE sport_dynamic (
     like_count INT DEFAULT 0 COMMENT '点赞数',
     comment_count INT DEFAULT 0 COMMENT '评论数',
     view_count INT DEFAULT 0 COMMENT '浏览数',
+    unique_view_count INT DEFAULT 0 COMMENT '去重浏览数（同一浏览者去重）',
     is_public TINYINT DEFAULT 1 COMMENT '是否公开：0私密 1公开',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

@@ -21,6 +21,8 @@ public class SportDynamicServiceImpl extends ServiceImpl<SportDynamicMapper, Spo
 
     private static final String HOT_DYNAMICS_KEY = "sport:hot:dynamics";
     private static final String DYNAMIC_LIKE_KEY = "sport:dynamic:like:";
+    private static final String DYNAMIC_VIEW_KEY = "sport:dynamic:view:";
+    private static final long VIEW_DEDUP_WINDOW_HOURS = 24;
 
     @Autowired
     private DynamicLikeMapper dynamicLikeMapper;
@@ -39,6 +41,7 @@ public class SportDynamicServiceImpl extends ServiceImpl<SportDynamicMapper, Spo
         }
         LambdaQueryWrapper<SportDynamic> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SportDynamic::getIsPublic, 1)
+                .orderByDesc(SportDynamic::getUniqueViewCount)
                 .orderByDesc(SportDynamic::getLikeCount)
                 .orderByDesc(SportDynamic::getCreateTime);
         List<SportDynamic> result;
@@ -80,10 +83,22 @@ public class SportDynamicServiceImpl extends ServiceImpl<SportDynamicMapper, Spo
     }
 
     @Override
-    public SportDynamic getDetail(Long id) {
+    public SportDynamic getDetail(Long id, Long viewerId) {
         SportDynamic dynamic = getById(id);
-        if (dynamic != null && dynamic.getIsPublic() == 1) {
+        if (dynamic == null) {
+            return null;
+        }
+        if (dynamic.getIsPublic() == 1) {
             dynamic.setViewCount(dynamic.getViewCount() + 1);
+            if (viewerId != null) {
+                String viewKey = DYNAMIC_VIEW_KEY + id + ":" + viewerId;
+                Boolean isNewView = redisTemplate.opsForValue().setIfAbsent(viewKey, 1, VIEW_DEDUP_WINDOW_HOURS, TimeUnit.HOURS);
+                if (Boolean.TRUE.equals(isNewView)) {
+                    dynamic.setUniqueViewCount(dynamic.getUniqueViewCount() + 1);
+                }
+            } else {
+                dynamic.setUniqueViewCount(dynamic.getUniqueViewCount() + 1);
+            }
             updateById(dynamic);
         }
         return dynamic;
@@ -94,6 +109,7 @@ public class SportDynamicServiceImpl extends ServiceImpl<SportDynamicMapper, Spo
         dynamic.setLikeCount(0);
         dynamic.setCommentCount(0);
         dynamic.setViewCount(0);
+        dynamic.setUniqueViewCount(0);
         if (dynamic.getIsPublic() == null) {
             dynamic.setIsPublic(1);
         }
