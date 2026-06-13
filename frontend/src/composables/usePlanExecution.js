@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { useCheckinStore } from '@/stores/checkin'
 import { planApi } from '@/api'
+import { getWeekRange, isInWeekRange } from '@/utils/common'
 
 const EXECUTION_STATUS = {
   IN_PROGRESS: { key: 'IN_PROGRESS', label: '进行中', color: '#409eff', bg: '#ecf5ff', borderColor: '#d9ecff' },
@@ -8,25 +9,11 @@ const EXECUTION_STATUS = {
   SIGNIFICANTLY_BEHIND: { key: 'SIGNIFICANTLY_BEHIND', label: '明显落后', color: '#f56c6c', bg: '#fef0f0', borderColor: '#fde2e2' }
 }
 
-function getWeekRange() {
-  const now = new Date()
-  const dayOfWeek = now.getDay()
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-  const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() + mondayOffset)
-  weekStart.setHours(0, 0, 0, 0)
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 6)
-  weekEnd.setHours(23, 59, 59, 999)
-  return { weekStart, weekEnd }
-}
-
 function computeSnapshot(plan, checkins) {
   const { weekStart, weekEnd } = getWeekRange()
 
   const planCheckins = checkins.filter(item => {
-    const itemDate = new Date(item.createTime)
-    return itemDate >= weekStart && itemDate <= weekEnd && item.type === plan.type
+    return isInWeekRange(item.createTime, weekStart, weekEnd) && item.type === plan.type
   })
 
   const completedCount = planCheckins.length

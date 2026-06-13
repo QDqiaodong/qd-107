@@ -26,46 +26,74 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Autowired
     private SportTypeMapper sportTypeMapper;
 
+    private LocalDate[] getWeekRange(LocalDate date) {
+        LocalDate weekStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate weekEnd = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        return new LocalDate[]{weekStart, weekEnd};
+    }
+
+    private LocalDate[] getMonthRange(LocalDate date) {
+        LocalDate monthStart = date.with(TemporalAdjusters.firstDayOfMonth());
+        LocalDate monthEnd = date.with(TemporalAdjusters.lastDayOfMonth());
+        return new LocalDate[]{monthStart, monthEnd};
+    }
+
+    private Map<String, Object> buildDateRangeResult(LocalDate startDate, LocalDate endDate,
+                                                     Integer checkinCount, Integer totalDuration,
+                                                     BigDecimal totalCalorie) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("checkinCount", checkinCount);
+        result.put("totalDuration", totalDuration);
+        result.put("totalCalorie", totalCalorie);
+        result.put("startDate", startDate.toString());
+        result.put("endDate", endDate.toString());
+        return result;
+    }
+
     @Override
     public Map<String, Object> getWeekStatistics(Long userId) {
         LocalDate today = LocalDate.now();
-        LocalDate weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate weekEnd = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-        Map<String, Object> result = new HashMap<>();
-        result.put("checkinCount", checkinRecordMapper.countByDateRange(userId, weekStart, weekEnd));
-        result.put("totalDuration", checkinRecordMapper.sumDurationByDateRange(userId, weekStart, weekEnd));
-        result.put("totalCalorie", checkinRecordMapper.sumCalorieByDateRange(userId, weekStart, weekEnd));
-        result.put("startDate", weekStart.toString());
-        result.put("endDate", weekEnd.toString());
-        return result;
+        LocalDate[] weekRange = getWeekRange(today);
+        LocalDate weekStart = weekRange[0];
+        LocalDate weekEnd = weekRange[1];
+        return buildDateRangeResult(
+                weekStart,
+                weekEnd,
+                checkinRecordMapper.countByDateRange(userId, weekStart, weekEnd),
+                checkinRecordMapper.sumDurationByDateRange(userId, weekStart, weekEnd),
+                checkinRecordMapper.sumCalorieByDateRange(userId, weekStart, weekEnd)
+        );
     }
 
     @Override
     public Map<String, Object> getMonthStatistics(Long userId) {
         LocalDate today = LocalDate.now();
-        LocalDate monthStart = today.with(TemporalAdjusters.firstDayOfMonth());
-        LocalDate monthEnd = today.with(TemporalAdjusters.lastDayOfMonth());
-        Map<String, Object> result = new HashMap<>();
-        result.put("checkinCount", checkinRecordMapper.countByDateRange(userId, monthStart, monthEnd));
-        result.put("totalDuration", checkinRecordMapper.sumDurationByDateRange(userId, monthStart, monthEnd));
-        result.put("totalCalorie", checkinRecordMapper.sumCalorieByDateRange(userId, monthStart, monthEnd));
-        result.put("startDate", monthStart.toString());
-        result.put("endDate", monthEnd.toString());
-        return result;
+        LocalDate[] monthRange = getMonthRange(today);
+        LocalDate monthStart = monthRange[0];
+        LocalDate monthEnd = monthRange[1];
+        return buildDateRangeResult(
+                monthStart,
+                monthEnd,
+                checkinRecordMapper.countByDateRange(userId, monthStart, monthEnd),
+                checkinRecordMapper.sumDurationByDateRange(userId, monthStart, monthEnd),
+                checkinRecordMapper.sumCalorieByDateRange(userId, monthStart, monthEnd)
+        );
     }
 
     @Override
     public Map<String, Object> getIntensityDistribution(Long userId, String period) {
         LocalDate today = LocalDate.now();
         LocalDate startDate;
-        LocalDate endDate = today;
+        LocalDate endDate;
 
         if ("month".equalsIgnoreCase(period)) {
-            startDate = today.with(TemporalAdjusters.firstDayOfMonth());
-            endDate = today.with(TemporalAdjusters.lastDayOfMonth());
+            LocalDate[] monthRange = getMonthRange(today);
+            startDate = monthRange[0];
+            endDate = monthRange[1];
         } else {
-            startDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            endDate = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            LocalDate[] weekRange = getWeekRange(today);
+            startDate = weekRange[0];
+            endDate = weekRange[1];
         }
 
         List<Map<String, Object>> raw = checkinRecordMapper.countByIntensityAndDateRange(userId, startDate, endDate);

@@ -468,7 +468,7 @@ import {
   Sort
 } from '@element-plus/icons-vue'
 import { useCheckinStore } from '@/stores/checkin'
-import { sportTypes, getSportTypeInfo, muscleTags, formatDate } from '@/utils/common'
+import { sportTypes, getSportTypeInfo, muscleTags, formatDate, getWeekRange, isInWeekRange, getWeekdayIndexFromMonday } from '@/utils/common'
 import CalendarHeatmap from '@/components/CalendarHeatmap.vue'
 
 use([
@@ -657,22 +657,18 @@ const saveProfile = () => {
 }
 
 const generateWeekData = () => {
-  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  const today = new Date()
-  const currentDay = today.getDay()
-  
+  const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const { weekStart, weekEnd } = getWeekRange()
+
   const data = new Array(7).fill(0)
-  
+
   checkinStore.checkins.forEach(item => {
-    const date = new Date(item.createTime)
-    const dayOfWeek = date.getDay()
-    const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24))
-    
-    if (diffDays < 7) {
-      data[dayOfWeek] += item.duration
+    if (isInWeekRange(item.createTime, weekStart, weekEnd)) {
+      const idx = getWeekdayIndexFromMonday(item.createTime)
+      data[idx] += item.duration
     }
   })
-  
+
   return {
     days,
     data

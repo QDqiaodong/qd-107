@@ -10,6 +10,7 @@ import {
   saveMonthlyGoals
 } from '@/utils/storage'
 import { checkinApi, sportTypeApi } from '@/api'
+import { getWeekRange, getMonthRange, isInWeekRange, isInMonthRange } from '@/utils/common'
 
 const DEFAULT_USER_ID = 1
 
@@ -109,15 +110,12 @@ export const useCheckinStore = defineStore('checkin', {
       return state.checkins.reduce((sum, item) => sum + (item.duration || 0), 0)
     },
     weekCheckins: (state) => {
-      const now = new Date()
-      const weekStart = new Date(now.setDate(now.getDate() - now.getDay()))
-      weekStart.setHours(0, 0, 0, 0)
-      return state.checkins.filter(item => new Date(item.createTime) >= weekStart)
+      const { weekStart, weekEnd } = getWeekRange()
+      return state.checkins.filter(item => isInWeekRange(item.createTime, weekStart, weekEnd))
     },
     monthCheckins: (state) => {
-      const now = new Date()
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      return state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+      const { monthStart, monthEnd } = getMonthRange()
+      return state.checkins.filter(item => isInMonthRange(item.createTime, monthStart, monthEnd))
     },
     activePlans: (state) => state.plans.filter(p => !p.completed),
     weeklySchedule: (state) => {
@@ -135,15 +133,11 @@ export const useCheckinStore = defineStore('checkin', {
       })
     },
     getWeeklyRemaining: (state) => (plan) => {
-      const now = new Date()
-      const dayOfWeek = now.getDay()
-      const weekStart = new Date(now)
-      weekStart.setDate(now.getDate() - dayOfWeek)
-      weekStart.setHours(0, 0, 0, 0)
+      const { weekStart, weekEnd } = getWeekRange()
 
-      const weekCheckins = state.checkins.filter(item =>
-        new Date(item.createTime) >= weekStart && item.type === plan.type
-      )
+      const weekCheckins = state.checkins.filter(item => {
+        return isInWeekRange(item.createTime, weekStart, weekEnd) && item.type === plan.type
+      })
 
       const completedCount = weekCheckins.length
       const completedDuration = weekCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
@@ -246,20 +240,17 @@ export const useCheckinStore = defineStore('checkin', {
       return state.monthlyGoals[key] || null
     },
     monthCheckinCount: (state) => {
-      const now = new Date()
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      return state.checkins.filter(item => new Date(item.createTime) >= monthStart).length
+      const { monthStart, monthEnd } = getMonthRange()
+      return state.checkins.filter(item => isInMonthRange(item.createTime, monthStart, monthEnd)).length
     },
     monthTotalDuration: (state) => {
-      const now = new Date()
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      const monthCheckins = state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+      const { monthStart, monthEnd } = getMonthRange()
+      const monthCheckins = state.checkins.filter(item => isInMonthRange(item.createTime, monthStart, monthEnd))
       return monthCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
     },
     monthTotalCalorie: (state) => {
-      const now = new Date()
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      const monthCheckins = state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+      const { monthStart, monthEnd } = getMonthRange()
+      const monthCheckins = state.checkins.filter(item => isInMonthRange(item.createTime, monthStart, monthEnd))
       return monthCheckins.reduce((sum, item) => {
         return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
       }, 0)
@@ -270,8 +261,8 @@ export const useCheckinStore = defineStore('checkin', {
       const goal = state.monthlyGoals[key]
       if (!goal) return null
 
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      const monthCheckins = state.checkins.filter(item => new Date(item.createTime) >= monthStart)
+      const { monthStart, monthEnd } = getMonthRange()
+      const monthCheckins = state.checkins.filter(item => isInMonthRange(item.createTime, monthStart, monthEnd))
 
       const checkinCount = monthCheckins.length
       const totalDuration = monthCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)

@@ -66,6 +66,43 @@ export const timeAgo = (dateStr) => {
   return formatDate(dateStr, 'YYYY-MM-DD')
 }
 
+export const getWeekRange = (date = new Date()) => {
+  const d = new Date(date)
+  const dayOfWeek = d.getDay()
+  const offset = (dayOfWeek + 6) % 7
+  const weekStart = new Date(d)
+  weekStart.setDate(d.getDate() - offset)
+  weekStart.setHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  weekEnd.setHours(23, 59, 59, 999)
+  return { weekStart, weekEnd }
+}
+
+export const getMonthRange = (date = new Date()) => {
+  const d = new Date(date)
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1)
+  monthStart.setHours(0, 0, 0, 0)
+  const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+  monthEnd.setHours(23, 59, 59, 999)
+  return { monthStart, monthEnd }
+}
+
+export const isInWeekRange = (dateStr, weekStart, weekEnd) => {
+  const t = new Date(dateStr)
+  return t >= weekStart && t <= weekEnd
+}
+
+export const isInMonthRange = (dateStr, monthStart, monthEnd) => {
+  const t = new Date(dateStr)
+  return t >= monthStart && t <= monthEnd
+}
+
+export const getWeekdayIndexFromMonday = (date) => {
+  const d = new Date(date)
+  return (d.getDay() + 6) % 7
+}
+
 export const extractCommonPhrases = (checkins, sportType = '', limit = 8) => {
   const phraseCount = {}
   const punctuationRegex = /[，。！？、；：""''（）\[\]【】\n\r,.!?;:'"()\[\]]/g
