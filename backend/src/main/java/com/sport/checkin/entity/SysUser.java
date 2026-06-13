@@ -31,6 +31,8 @@ public class SysUser {
 
     private java.math.BigDecimal weight;
 
+    private String target;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

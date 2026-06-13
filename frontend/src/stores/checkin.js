@@ -9,8 +9,8 @@ import {
   getMonthlyGoals,
   saveMonthlyGoals
 } from '@/utils/storage'
-import { checkinApi, sportTypeApi } from '@/api'
-import { getWeekRange, getMonthRange, isInWeekRange, isInMonthRange } from '@/utils/common'
+import { checkinApi, sportTypeApi, userApi } from '@/api'
+import { getWeekRange, getMonthRange, isInWeekRange, isInMonthRange, calculateCalorie } from '@/utils/common'
 
 const DEFAULT_USER_ID = 1
 
@@ -167,8 +167,8 @@ export const useCheckinStore = defineStore('checkin', {
     maxCalorieRecord: (state) => {
       if (state.checkins.length === 0) return null
       return state.checkins.reduce((max, curr) => {
-        const currCalorie = (curr.duration || 0) * (curr.amount || 0) * 0.1
-        const maxCalorie = (max.duration || 0) * (max.amount || 0) * 0.1
+        const currCalorie = calculateCalorie(curr)
+        const maxCalorie = calculateCalorie(max)
         return currCalorie > maxCalorie ? curr : max
       })
     },
@@ -252,7 +252,7 @@ export const useCheckinStore = defineStore('checkin', {
       const { monthStart, monthEnd } = getMonthRange()
       const monthCheckins = state.checkins.filter(item => isInMonthRange(item.createTime, monthStart, monthEnd))
       return monthCheckins.reduce((sum, item) => {
-        return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
+        return sum + calculateCalorie(item)
       }, 0)
     },
     monthGoalProgress: (state) => {
@@ -267,7 +267,7 @@ export const useCheckinStore = defineStore('checkin', {
       const checkinCount = monthCheckins.length
       const totalDuration = monthCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
       const totalCalorie = monthCheckins.reduce((sum, item) => {
-        return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
+        return sum + calculateCalorie(item)
       }, 0)
 
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
@@ -322,7 +322,7 @@ export const useCheckinStore = defineStore('checkin', {
 
         const dayDuration = dayCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
         const dayCalorie = dayCheckins.reduce((sum, item) => {
-          return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
+          return sum + calculateCalorie(item)
         }, 0)
 
         const isPast = day < now.getDate()
@@ -529,8 +529,26 @@ export const useCheckinStore = defineStore('checkin', {
       }
     },
 
-    updateUserInfo(info) {
-      this.userInfo = { ...this.userInfo, ...info, id: this.userInfo?.id || DEFAULT_USER_ID }
+    async updateUserInfo(info) {
+      const userId = this.userInfo?.id || DEFAULT_USER_ID
+      const updateData = {
+        id: userId,
+        nickname: info.nickname,
+        height: info.height,
+        weight: info.weight,
+        target: info.target
+      }
+      try {
+        const res = await userApi.update(updateData)
+        if (res.code === 200 && res.data) {
+          this.userInfo = { ...this.userInfo, ...res.data }
+        } else {
+          throw new Error(res.message || '更新失败')
+        }
+      } catch (e) {
+        console.warn('后端更新用户信息失败，仅更新本地缓存', e)
+        this.userInfo = { ...this.userInfo, ...info, id: userId }
+      }
       saveUserInfo(this.userInfo)
     },
 

@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { calculateCalorie as commonCalculateCalorie } from '@/utils/common'
 
 const INTENSITY_LEVELS = {
   LIGHT: { label: '轻量', color: '#67c23a', bg: '#f0f9eb' },
@@ -19,12 +20,17 @@ const classifyIntensityLocal = (duration, calorie) => {
   return 'LIGHT'
 }
 
-const calcCalorie = (duration, amount) => Math.round((duration || 0) * (amount || 0) * 0.1)
+const calcCalorie = (duration, amount, type) => {
+  if (type) {
+    return commonCalculateCalorie({ duration, type })
+  }
+  return commonCalculateCalorie({ duration, type: 'other' })
+}
 
 export function useWorkoutIntensity(checkin) {
   const calorie = computed(() => {
     if (checkin.calorie != null) return checkin.calorie
-    return calcCalorie(checkin.duration, checkin.amount)
+    return calcCalorie(checkin.duration, checkin.amount, checkin.type)
   })
 
   const distance = computed(() => checkin.distance != null ? checkin.distance : null)

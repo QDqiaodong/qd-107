@@ -468,7 +468,7 @@ import {
   Sort
 } from '@element-plus/icons-vue'
 import { useCheckinStore } from '@/stores/checkin'
-import { sportTypes, getSportTypeInfo, muscleTags, formatDate, getWeekRange, isInWeekRange, getWeekdayIndexFromMonday } from '@/utils/common'
+import { sportTypes, getSportTypeInfo, muscleTags, formatDate, getWeekRange, isInWeekRange, getWeekdayIndexFromMonday, calculateCalorie } from '@/utils/common'
 import CalendarHeatmap from '@/components/CalendarHeatmap.vue'
 
 use([
@@ -501,7 +501,7 @@ const editForm = ref({
 const maxCalorieValue = computed(() => {
   const record = checkinStore.maxCalorieRecord
   if (!record) return 0
-  return Math.round((record.duration || 0) * (record.amount || 0) * 0.1)
+  return calculateCalorie(record)
 })
 
 const detailTitle = computed(() => {
@@ -579,10 +579,7 @@ const getMuscleTagInfos = (tagValues) => {
   return tagValues.map(v => muscleTags.find(t => t.value === v)).filter(Boolean)
 }
 
-const calculateCalorie = (record) => {
-  if (!record) return 0
-  return Math.round((record.duration || 0) * (record.amount || 0) * 0.1)
-}
+
 
 const formatStreakStart = (streakData) => {
   if (!streakData || !streakData.endDate || streakData.days === 0) return '-'
@@ -650,10 +647,14 @@ onMounted(() => {
   loadBackendCheckins()
 })
 
-const saveProfile = () => {
-  checkinStore.updateUserInfo(editForm.value)
-  ElMessage.success('保存成功')
-  showEdit.value = false
+const saveProfile = async () => {
+  try {
+    await checkinStore.updateUserInfo(editForm.value)
+    ElMessage.success('保存成功')
+    showEdit.value = false
+  } catch (e) {
+    ElMessage.error('保存失败，请稍后重试')
+  }
 }
 
 const generateWeekData = () => {

@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { useCheckinStore } from '@/stores/checkin'
 import { planApi } from '@/api'
-import { getWeekRange, isInWeekRange } from '@/utils/common'
+import { getWeekRange, isInWeekRange, calculateCalorie } from '@/utils/common'
 
 const EXECUTION_STATUS = {
   IN_PROGRESS: { key: 'IN_PROGRESS', label: '进行中', color: '#409eff', bg: '#ecf5ff', borderColor: '#d9ecff' },
@@ -19,7 +19,7 @@ function computeSnapshot(plan, checkins) {
   const completedCount = planCheckins.length
   const completedDuration = planCheckins.reduce((sum, item) => sum + (item.duration || 0), 0)
   const completedCalorie = planCheckins.reduce((sum, item) => {
-    return sum + Math.round((item.duration || 0) * (item.amount || 0) * 0.1)
+    return sum + calculateCalorie(item)
   }, 0)
 
   const targetCount = plan.weekdays ? plan.weekdays.length : (plan.frequency ? parseInt(plan.frequency) : 0)

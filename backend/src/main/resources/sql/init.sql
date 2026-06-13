@@ -15,6 +15,7 @@ CREATE TABLE sys_user (
     age INT COMMENT '年龄',
     height DECIMAL(5,2) COMMENT '身高(cm)',
     weight DECIMAL(5,2) COMMENT '体重(kg)',
+    target VARCHAR(255) COMMENT '运动目标',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted TINYINT DEFAULT 0 COMMENT '删除标记：0未删除 1已删除'
@@ -122,6 +123,6 @@ INSERT INTO sport_type (name, icon, description, calorie_per_minute, sort, hot_c
 ('篮球', 'basketball', '篮球运动', 9.00, 7, 780),
 ('徒步', 'hiking', '户外徒步登山', 5.50, 8, 450);
 
-INSERT INTO sys_user (id, username, password, nickname, avatar, height, weight) VALUES
-(1, 'default_user', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '运动达人', '', 170.00, 65.00)
+INSERT INTO sys_user (id, username, password, nickname, avatar, height, weight, target) VALUES
+(1, 'default_user', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '运动达人', '', 170.00, 65.00, '保持健康')
 ON DUPLICATE KEY UPDATE id = id;

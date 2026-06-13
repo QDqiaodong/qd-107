@@ -103,6 +103,32 @@ export const getWeekdayIndexFromMonday = (date) => {
   return (d.getDay() + 6) % 7
 }
 
+export const caloriePerMinuteMap = {
+  running: 10.00,
+  cycling: 8.00,
+  swimming: 12.00,
+  yoga: 4.00,
+  gym: 7.00,
+  fitness: 7.00,
+  badminton: 6.50,
+  basketball: 9.00,
+  hiking: 5.50,
+  other: 5.00
+}
+
+export const getCaloriePerMinute = (type) => {
+  return caloriePerMinuteMap[type] || caloriePerMinuteMap.other
+}
+
+export const calculateCalorie = (record) => {
+  if (!record) return 0
+  if (record.calorie != null) return Math.round(record.calorie)
+  const duration = record.duration || 0
+  const type = record.type || 'other'
+  const caloriePerMinute = getCaloriePerMinute(type)
+  return Math.round(duration * caloriePerMinute)
+}
+
 export const extractCommonPhrases = (checkins, sportType = '', limit = 8) => {
   const phraseCount = {}
   const punctuationRegex = /[，。！？、；：""''（）\[\]【】\n\r,.!?;:'"()\[\]]/g
