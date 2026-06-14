@@ -18,6 +18,8 @@ public interface SportPlanService extends IService<SportPlan> {
 
     boolean updatePlan(SportPlan plan);
 
+    boolean updatePlan(SportPlan originalPlan, SportPlan mergedPlan);
+
     boolean deletePlan(Long id);
 
     boolean setReminder(Long id, Integer enabled, String reminderTime);
@@ -28,8 +30,10 @@ public interface SportPlanService extends IService<SportPlan> {
 
     PlanConflictCheckResultDTO checkPlanConflictsWithWarnings(SportPlan plan, Long excludePlanId);
 
+    PlanConflictCheckResultDTO checkPlanConflictsWithWarnings(SportPlan plan, SportPlan originalRequest, Long excludePlanId);
+
     SportPlan mergePlanWithExisting(SportPlan plan);
 
-    List<String> validatePlanFields(SportPlan plan, boolean isUpdate);
+    List<String> validatePlanFields(SportPlan plan, SportPlan originalRequest, boolean isUpdate);
 
 }

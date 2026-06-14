@@ -57,4 +57,12 @@ public class PlanConflictCheckResultDTO {
         }
     }
 
+    public List<PlanConflictDTO> getConflicts() {
+        return conflicts;
+    }
+
+    public List<String> getWarnings() {
+        return warnings;
+    }
+
 }

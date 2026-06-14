@@ -42,7 +42,7 @@ public class SportPlanController {
     @PostMapping
     public Result<SportPlan> addPlan(@RequestBody SportPlan plan) {
         try {
-            List<String> warnings = sportPlanService.validatePlanFields(plan, false);
+            List<String> warnings = sportPlanService.validatePlanFields(plan, plan, false);
             sportPlanService.addPlan(plan);
             Result<SportPlan> result = Result.success("创建成功", plan);
             result.addWarnings(warnings);
@@ -56,8 +56,8 @@ public class SportPlanController {
     public Result<SportPlan> updatePlan(@RequestBody SportPlan plan) {
         try {
             SportPlan mergedPlan = sportPlanService.mergePlanWithExisting(plan);
-            List<String> warnings = sportPlanService.validatePlanFields(mergedPlan, true);
-            sportPlanService.updatePlan(plan);
+            List<String> warnings = sportPlanService.validatePlanFields(mergedPlan, plan, true);
+            sportPlanService.updatePlan(plan, mergedPlan);
             Result<SportPlan> result = Result.success("更新成功", mergedPlan);
             result.addWarnings(warnings);
             return result;
