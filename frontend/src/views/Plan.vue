@@ -213,7 +213,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCheckinStore } from '@/stores/checkin'
 import { sportTypes } from '@/utils/common'
@@ -223,6 +223,14 @@ import PlanSnapshotCard from '@/components/PlanSnapshotCard.vue'
 
 const checkinStore = useCheckinStore()
 const { byStatus, summary: executionSummary, getSnapshotForPlan } = usePlanExecution()
+
+onMounted(async () => {
+  try {
+    await checkinStore.fetchPlans()
+  } catch (e) {
+    console.warn('从后端加载计划失败，使用本地缓存', e)
+  }
+})
 
 const activeTab = ref('all')
 const showDialog = ref(false)
@@ -275,27 +283,35 @@ const handleTypeChange = (value) => {
 const handleSubmit = async () => {
   if (!planFormRef.value) return
   
-  await planFormRef.value.validate((valid) => {
+  await planFormRef.value.validate(async (valid) => {
     if (valid) {
-      checkinStore.addPlan({ ...planForm.value })
-      ElMessage.success('创建成功')
-      showDialog.value = false
-      planForm.value = {
-        title: '',
-        type: '',
-        typeName: '',
-        duration: 30,
-        weekdays: [],
-        target: '',
-        frequency: ''
+      try {
+        await checkinStore.addPlan({ ...planForm.value })
+        ElMessage.success('创建成功')
+        showDialog.value = false
+        planForm.value = {
+          title: '',
+          type: '',
+          typeName: '',
+          duration: 30,
+          weekdays: [],
+          target: '',
+          frequency: ''
+        }
+      } catch (e) {
+        ElMessage.error('创建计划失败')
       }
     }
   })
 }
 
-const handleToggle = (id) => {
-  checkinStore.togglePlan(id)
-  ElMessage.success('状态已更新')
+const handleToggle = async (id) => {
+  try {
+    await checkinStore.togglePlan(id)
+    ElMessage.success('状态已更新')
+  } catch (e) {
+    ElMessage.error('更新状态失败')
+  }
 }
 
 const handleDelete = (id) => {
@@ -303,9 +319,13 @@ const handleDelete = (id) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    checkinStore.deletePlan(id)
-    ElMessage.success('删除成功')
+  }).then(async () => {
+    try {
+      await checkinStore.deletePlan(id)
+      ElMessage.success('删除成功')
+    } catch (e) {
+      ElMessage.error('删除失败')
+    }
   }).catch(() => {})
 }
 </script>

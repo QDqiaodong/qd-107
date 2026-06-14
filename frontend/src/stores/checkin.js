@@ -9,7 +9,7 @@ import {
   getMonthlyGoals,
   saveMonthlyGoals
 } from '@/utils/storage'
-import { checkinApi, sportTypeApi, userApi } from '@/api'
+import { checkinApi, sportTypeApi, userApi, planApi } from '@/api'
 import { getWeekRange, getMonthRange, isInWeekRange, isInMonthRange, calculateCalorie } from '@/utils/common'
 
 const DEFAULT_USER_ID = 1
@@ -100,6 +100,35 @@ const backToFront = (record) => {
     muscleTags: record.muscleTags ? record.muscleTags.split(',').filter(Boolean) : [],
     images: record.images ? record.images.split(',').filter(Boolean) : [],
     createTime: record.checkinTime ? new Date(record.checkinTime).toISOString() : (record.createTime ? new Date(record.createTime).toISOString() : new Date().toISOString())
+  }
+}
+
+const planToBack = (plan, userId = DEFAULT_USER_ID) => {
+  return {
+    userId,
+    sportTypeId: getTypeId(plan.type),
+    title: plan.title,
+    description: plan.target || '',
+    targetDuration: plan.duration,
+    targetFrequency: plan.weekdays ? plan.weekdays.length : 0,
+    weekdays: plan.weekdays ? plan.weekdays.join(',') : '',
+    status: plan.completed ? 0 : 1
+  }
+}
+
+const backToPlan = (record) => {
+  const { type, typeName } = getTypeInfo(record.sportTypeId)
+  return {
+    id: record.id,
+    title: record.title,
+    type,
+    typeName,
+    duration: record.targetDuration || 0,
+    weekdays: record.weekdays ? record.weekdays.split(',').map(Number) : [],
+    target: record.description || '',
+    frequency: record.targetFrequency ? `每周${record.targetFrequency}次` : '',
+    completed: record.status === 0,
+    createTime: record.createTime ? new Date(record.createTime).toISOString() : new Date().toISOString()
   }
 }
 
@@ -488,52 +517,120 @@ export const useCheckinStore = defineStore('checkin', {
       saveCheckins(this.checkins)
     },
 
-    addPlan(plan) {
-      const newPlan = {
-        ...plan,
-        id: Date.now(),
-        completed: false,
-        createTime: new Date().toISOString()
+    async fetchPlans() {
+      try {
+        await this.ensureSportTypeMap()
+        const userId = this.getCurrentUserId()
+        const res = await planApi.getList(userId)
+        if (res.code === 200 && Array.isArray(res.data)) {
+          this.plans = res.data.map(r => backToPlan(r)).sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
+          savePlans(this.plans)
+          return this.plans
+        }
+        throw new Error(res.message || '加载计划数据失败')
+      } catch (e) {
+        console.error('fetchPlans error:', e)
+        throw e
       }
-      this.plans.unshift(newPlan)
-      savePlans(this.plans)
     },
 
-    togglePlan(id) {
-      const plan = this.plans.find(p => p.id === id)
-      if (plan) {
-        plan.completed = !plan.completed
+    async addPlan(plan) {
+      const userId = this.getCurrentUserId()
+      const payload = planToBack(plan, userId)
+      try {
+        const res = await planApi.create(payload)
+        if (res.code === 200 && res.data) {
+          const newPlan = backToPlan(res.data)
+          this.plans = [newPlan, ...this.plans.filter(p => p.id !== newPlan.id)].sort(
+            (a, b) => new Date(b.createTime) - new Date(a.createTime)
+          )
+          savePlans(this.plans)
+          return
+        }
+        throw new Error(res.message || '创建计划失败')
+      } catch (e) {
+        console.warn('后端创建计划失败，仅保存本地', e)
+        const newPlan = {
+          ...plan,
+          id: Date.now(),
+          completed: false,
+          createTime: new Date().toISOString()
+        }
+        this.plans.unshift(newPlan)
         savePlans(this.plans)
       }
     },
 
-    deletePlan(id) {
+    async togglePlan(id) {
+      const plan = this.plans.find(p => p.id === id)
+      if (!plan) return
+      plan.completed = !plan.completed
+      try {
+        const payload = planToBack(plan, this.getCurrentUserId())
+        payload.id = id
+        const res = await planApi.update(payload)
+        if (res.code !== 200) {
+          throw new Error(res.message || '更新计划失败')
+        }
+      } catch (e) {
+        console.warn('后端更新计划失败，仅更新本地', e)
+      }
+      savePlans(this.plans)
+    },
+
+    async deletePlan(id) {
+      try {
+        const res = await planApi.delete(id)
+        if (res.code !== 200) {
+          throw new Error(res.message || '删除计划失败')
+        }
+      } catch (e) {
+        console.warn('后端删除计划失败，继续从本地移除', e)
+      }
       this.plans = this.plans.filter(p => p.id !== id)
       savePlans(this.plans)
     },
 
-    updatePlan(id, data) {
+    async updatePlan(id, data) {
       const plan = this.plans.find(p => p.id === id)
-      if (plan) {
-        Object.assign(plan, data)
-        savePlans(this.plans)
+      if (!plan) return
+      Object.assign(plan, data)
+      try {
+        const payload = planToBack(plan, this.getCurrentUserId())
+        payload.id = id
+        const res = await planApi.update(payload)
+        if (res.code !== 200) {
+          throw new Error(res.message || '更新计划失败')
+        }
+      } catch (e) {
+        console.warn('后端更新计划失败，仅更新本地', e)
       }
+      savePlans(this.plans)
     },
 
-    togglePlanWeekday(planId, weekday) {
+    async togglePlanWeekday(planId, weekday) {
       const plan = this.plans.find(p => p.id === planId)
-      if (plan) {
-        if (!plan.weekdays) {
-          plan.weekdays = []
-        }
-        const index = plan.weekdays.indexOf(weekday)
-        if (index > -1) {
-          plan.weekdays.splice(index, 1)
-        } else {
-          plan.weekdays.push(weekday)
-        }
-        savePlans(this.plans)
+      if (!plan) return
+      if (!plan.weekdays) {
+        plan.weekdays = []
       }
+      const index = plan.weekdays.indexOf(weekday)
+      if (index > -1) {
+        plan.weekdays.splice(index, 1)
+      } else {
+        plan.weekdays.push(weekday)
+      }
+      try {
+        const payload = planToBack(plan, this.getCurrentUserId())
+        payload.id = planId
+        const res = await planApi.update(payload)
+        if (res.code !== 200) {
+          throw new Error(res.message || '更新计划失败')
+        }
+      } catch (e) {
+        console.warn('后端更新计划失败，仅更新本地', e)
+      }
+      savePlans(this.plans)
     },
 
     async updateUserInfo(info) {

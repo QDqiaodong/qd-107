@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -280,10 +281,20 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
     }
 
     private String mergeImages(String existingImg, String newImg) {
-        if (StringUtils.hasText(newImg)) {
-            return newImg;
+        Set<String> allImages = new LinkedHashSet<>();
+        if (StringUtils.hasText(existingImg)) {
+            Arrays.stream(existingImg.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(allImages::add);
         }
-        return StringUtils.hasText(existingImg) ? existingImg : null;
+        if (StringUtils.hasText(newImg)) {
+            Arrays.stream(newImg.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(allImages::add);
+        }
+        return allImages.isEmpty() ? null : String.join(",", allImages);
     }
 
 }
