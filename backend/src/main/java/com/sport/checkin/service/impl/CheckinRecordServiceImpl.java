@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -79,8 +80,12 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
 
     @Override
     public CheckinResultDTO addCheckin(CheckinRecord record) {
-        record.setCheckinDate(LocalDate.now());
-        record.setCheckinTime(LocalDateTime.now());
+        if (record.getCheckinDate() == null) {
+            record.setCheckinDate(LocalDate.now());
+        }
+        if (record.getCheckinTime() == null) {
+            record.setCheckinTime(record.getCheckinDate().atTime(LocalTime.now()));
+        }
 
         SportType sportType = record.getSportTypeId() != null
                 ? sportTypeService.getById(record.getSportTypeId()) : null;

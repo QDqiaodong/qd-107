@@ -34,6 +34,19 @@
         <div v-show="activeStep === 1" class="step-panel">
           <h3 class="step-title">填写运动数据</h3>
           <el-form :model="formData" label-width="100px" class="data-form">
+            <el-form-item label="打卡日期">
+              <el-date-picker
+                v-model="formData.checkinDate"
+                type="date"
+                placeholder="默认为今天"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                :disabled-date="disableFutureDate"
+                style="width: 200px;"
+                clearable
+              />
+              <span class="unit date-hint">不选则为今天</span>
+            </el-form-item>
             <el-form-item label="运动时长" required>
               <el-input-number
                 v-model="formData.duration"
@@ -230,6 +243,7 @@ const muscleTagDialogVisible = ref(false)
 const selectedTags = ref([])
 
 const defaultForm = {
+  checkinDate: '',
   type: '',
   typeName: '',
   duration: 30,
@@ -324,6 +338,10 @@ const selectStatus = (status) => {
   formData.statusText = status.label
 }
 
+const disableFutureDate = (date) => {
+  return date.getTime() > Date.now()
+}
+
 const syncImagesFromFileList = () => {
   formData.images = []
   fileList.value.forEach(file => {
@@ -392,6 +410,7 @@ const buildSummaryNote = () => {
 const submitCheckin = async () => {
   const summaryNote = buildSummaryNote()
   const result = await checkinStore.addCheckin({
+    checkinDate: formData.checkinDate || '',
     type: formData.type,
     typeName: formData.typeName,
     duration: formData.duration,
@@ -615,6 +634,10 @@ const confirmMuscleTags = () => {
 .unit {
   margin-left: 12px;
   color: #909399;
+}
+
+.date-hint {
+  font-size: 12px;
 }
 
 .phrase-tags {

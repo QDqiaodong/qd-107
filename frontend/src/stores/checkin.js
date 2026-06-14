@@ -59,7 +59,7 @@ const frontToBack = (checkin, userId = DEFAULT_USER_ID) => {
     }
   }
 
-  return {
+  const result = {
     userId,
     sportTypeId,
     duration: checkin.duration || 0,
@@ -68,6 +68,12 @@ const frontToBack = (checkin, userId = DEFAULT_USER_ID) => {
     muscleTags: Array.isArray(checkin.muscleTags) ? checkin.muscleTags.join(',') : '',
     images: Array.isArray(checkin.images) ? checkin.images.join(',') : ''
   }
+
+  if (checkin.checkinDate) {
+    result.checkinDate = checkin.checkinDate
+  }
+
+  return result
 }
 
 const backToFront = (record) => {
