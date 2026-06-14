@@ -121,7 +121,8 @@ INSERT INTO sport_type (name, icon, description, calorie_per_minute, sort, hot_c
 ('健身', 'fitness', '健身房力量训练', 7.00, 5, 900),
 ('羽毛球', 'badminton', '羽毛球运动', 6.50, 6, 560),
 ('篮球', 'basketball', '篮球运动', 9.00, 7, 780),
-('徒步', 'hiking', '户外徒步登山', 5.50, 8, 450);
+('徒步', 'hiking', '户外徒步登山', 5.50, 8, 450),
+('其他', 'other', '其他运动类型', 5.00, 9, 300);
 
 INSERT INTO sys_user (id, username, password, nickname, avatar, height, weight, target) VALUES
 (1, 'default_user', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '运动达人', '', 170.00, 65.00, '保持健康')

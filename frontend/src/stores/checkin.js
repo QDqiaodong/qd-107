@@ -24,7 +24,7 @@ const typeIdMapCache = {
   badminton: 6,
   basketball: 7,
   hiking: 8,
-  other: 5
+  other: 9
 }
 
 const idTypeMapCache = {
@@ -35,11 +35,12 @@ const idTypeMapCache = {
   5: { type: 'gym', typeName: '健身', amountUnit: '组' },
   6: { type: 'badminton', typeName: '羽毛球', amountUnit: '次' },
   7: { type: 'basketball', typeName: '篮球', amountUnit: '次' },
-  8: { type: 'hiking', typeName: '徒步', amountUnit: '公里' }
+  8: { type: 'hiking', typeName: '徒步', amountUnit: '公里' },
+  9: { type: 'other', typeName: '其他', amountUnit: '次' }
 }
 
 const getTypeId = (type) => {
-  return typeIdMapCache[type] || 5
+  return typeIdMapCache[type] || 9
 }
 
 const getTypeInfo = (sportTypeId) => {
@@ -577,7 +578,8 @@ const amountUnitForType = (type) => {
     gym: '组',
     badminton: '次',
     basketball: '次',
-    hiking: '公里'
+    hiking: '公里',
+    other: '次'
   }
   return m[type] || '次'
 }
